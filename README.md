@@ -13,4 +13,6 @@ Repo for å gjøre case i Apps-delen av introkurset i Sopra Steria. Odd Arne er 
 19:00-? - Middag
 
 # Oppgave
-Kjell ønsker at vi skal lage en webapplikasjon hvor man kan opprette turneringer basert på ulike turneringsoppsett, og oppdatere fremdriften i tureringen. 
+Kjell i Kjell Games AS ønsker at vi skal lage en webapplikasjon hvor man kan opprette turneringer basert på ulike turneringsoppsett, og oppdatere fremdriften i tureringen. Han har med seg innkjøpsavdelingen sin som skal bistå med anskaffelsen. 
+
+De er beryktet for å være både hodeløse kyllinger og løse kanoner.
