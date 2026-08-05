@@ -11,3 +11,6 @@ Repo for å gjøre case i Apps-delen av introkurset i Sopra Steria. Odd Arne er 
 13:15-16:00 - Vibe coding med DevOps
 16:30-18:00 - Apps Games med årets faddere
 19:00-? - Middag
+
+# Oppgave
+Kjell ønsker at vi skal lage en webapplikasjon hvor man kan opprette turneringer basert på ulike turneringsoppsett, og oppdatere fremdriften i tureringen. 
