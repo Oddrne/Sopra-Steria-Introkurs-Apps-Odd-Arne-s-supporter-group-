@@ -1,18 +1,52 @@
-# Sopra-Steria-Introkurs-Apps-Odd-Arne-s-supporter-group-
-Repo for å gjøre case i Apps-delen av introkurset i Sopra Steria. Odd Arne er nygift.
+# Kjell Games — Turneringswebapp (MVP)
 
-# Plan for torsdag
-09:15-10:00 - Applications, hvem er vi og hvordan er vi organisert?
-10:00-10:30 - Prosjekteksempler
-10:30-10:45 - Kaffepause
-10:45-11:45 - Mitt første år i Sopra Steria og Apps
-11:45-12:45 - Lunsj
-12:45-13:15 - Forretningsmodell i Sopra Steria
-13:15-16:00 - Vibe coding med DevOps
-16:30-18:00 - Apps Games med årets faddere
-19:00-? - Middag
+Hobby-MVP for Kjell Games AS. Opprett turneringer, legg til deltakere, generer kamper og registrer resultater.
 
-# Oppgave
-Kjell i Kjell Games AS ønsker at vi skal lage en webapplikasjon hvor man kan opprette turneringer basert på ulike turneringsoppsett, og oppdatere fremdriften i tureringen. Han har med seg innkjøpsavdelingen sin som skal bistå med anskaffelsen. 
+## Stack (2-timers leveranse)
 
-De er beryktet for å være både hodeløse kyllinger og løse kanoner.
+- **React + JavaScript** (Vite)
+- **Persistens:** `localStorage` (ingen backend i MVP)
+- **Auth:** enkel lokal innlogging (demo-brukere)
+- **Format:** alle-mot-alle fullt spillbart; cup og liga som skisser
+
+## Kom i gang
+
+```bash
+npm install
+npm run dev
+```
+
+Åpne URL-en Vite viser (vanligvis http://localhost:5173).
+
+### Demo-brukere
+
+| E-post | Passord | Rolle |
+|--------|---------|-------|
+| kjell@kjellgames.no | demo | admin |
+| anna@kjellgames.no | demo | organizer |
+
+## Flyt
+
+1. Logg inn
+2. Opprett turnering (velg **Alle-mot-alle**)
+3. Legg til minst 2 deltakere
+4. Start turnering → kamper genereres
+5. Registrer resultater → tabellen oppdateres
+
+## Mappestruktur
+
+```
+src/
+  components/     # Layout, auth-guard, badges
+  context/        # App-state + actions
+  data/           # localStorage
+  domain/         # Konstanter + round-robin-logikk
+  pages/          # Ruter/sider
+  App.jsx
+  main.jsx
+  styles.css
+```
+
+## Målarkitektur (ikke i denne MVP-en)
+
+Nettlesar → webapp → API/DB → hosting, med brukere, rollebasert tilgang, og full støtte for cup + liga.
