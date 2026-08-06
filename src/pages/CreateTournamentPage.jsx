@@ -1,34 +1,24 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
-import {
-  TOURNAMENT_TYPE_LABELS,
-  TOURNAMENT_TYPES,
-} from '../domain/constants.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
+import { TOURNAMENT_TYPES } from '../domain/constants.js'
 import { generateTournamentName } from '../domain/nameGenerator.js'
 
 const TYPE_OPTIONS = [
-  {
-    value: TOURNAMENT_TYPES.ROUND_ROBIN,
-    description:
-      'Alle møter alle én gang. Kampiste + poengtabell (3/1/0). Uavgjort tillatt.',
-  },
-  {
-    value: TOURNAMENT_TYPES.CUP,
-    description: 'Single elimination. Bracket seedes etter ranking (sterk vs svak tidlig).',
-  },
-  {
-    value: TOURNAMENT_TYPES.SWISS,
-    description:
-      'Swiss stage: runde 1 seedes (sterk vs svak). Senere runder parer lag med lignende poeng.',
-  },
+  TOURNAMENT_TYPES.ROUND_ROBIN,
+  TOURNAMENT_TYPES.CUP,
+  TOURNAMENT_TYPES.SWISS,
 ]
 
 export default function CreateTournamentPage() {
   const { createTournament } = useApp()
+  const { t, locale } = useI18n()
   const navigate = useNavigate()
   const [type, setType] = useState(TOURNAMENT_TYPES.ROUND_ROBIN)
-  const [name, setName] = useState(() => generateTournamentName(TOURNAMENT_TYPES.ROUND_ROBIN))
+  const [name, setName] = useState(() =>
+    generateTournamentName(TOURNAMENT_TYPES.ROUND_ROBIN, locale),
+  )
   const [nameIsAuto, setNameIsAuto] = useState(true)
   const [maxParticipants, setMaxParticipants] = useState('')
   const [swissRounds, setSwissRounds] = useState('')
@@ -37,12 +27,12 @@ export default function CreateTournamentPage() {
   function handleTypeChange(nextType) {
     setType(nextType)
     if (nameIsAuto) {
-      setName(generateTournamentName(nextType))
+      setName(generateTournamentName(nextType, locale))
     }
   }
 
   function handleGenerateName() {
-    setName(generateTournamentName(type))
+    setName(generateTournamentName(type, locale))
     setNameIsAuto(true)
   }
 
@@ -56,7 +46,7 @@ export default function CreateTournamentPage() {
       swissRounds: type === TOURNAMENT_TYPES.SWISS ? swissRounds || null : null,
     })
     if (!result.ok) {
-      setError(result.error)
+      setError(t(result.error))
       return
     }
     navigate(`/tournaments/${result.tournament.id}`)
@@ -64,14 +54,12 @@ export default function CreateTournamentPage() {
 
   return (
     <section className="page narrow">
-      <h1>Ny turnering</h1>
-      <p className="muted">
-        Velg navn, format og eventuelt maks deltakere. Ranking (1–3) settes på lagene før start.
-      </p>
+      <h1>{t('create.title')}</h1>
+      <p className="muted">{t('create.intro')}</p>
 
       <form className="form" onSubmit={handleSubmit}>
         <label>
-          Navn
+          {t('create.name')}
           <div className="name-field">
             <input
               value={name}
@@ -79,41 +67,41 @@ export default function CreateTournamentPage() {
                 setName(e.target.value)
                 setNameIsAuto(false)
               }}
-              placeholder="f.eks. Fredagscupen"
+              placeholder={t('create.namePlaceholder')}
               required
             />
             <button type="button" className="btn btn-secondary" onClick={handleGenerateName}>
-              Generer navn
+              {t('create.generateName')}
             </button>
           </div>
         </label>
 
         <label>
-          Maks deltakere (valgfritt)
+          {t('create.maxParticipants')}
           <input
             type="number"
             min="2"
             step="1"
             value={maxParticipants}
             onChange={(e) => setMaxParticipants(e.target.value)}
-            placeholder="Ubegrenset"
+            placeholder={t('create.maxUnlimited')}
           />
         </label>
 
         <fieldset className="type-picker">
-          <legend>Format</legend>
-          {TYPE_OPTIONS.map((option) => (
-            <label key={option.value} className="type-option">
+          <legend>{t('create.format')}</legend>
+          {TYPE_OPTIONS.map((value) => (
+            <label key={value} className="type-option">
               <input
                 type="radio"
                 name="type"
-                value={option.value}
-                checked={type === option.value}
-                onChange={() => handleTypeChange(option.value)}
+                value={value}
+                checked={type === value}
+                onChange={() => handleTypeChange(value)}
               />
               <span>
-                <strong>{TOURNAMENT_TYPE_LABELS[option.value]}</strong>
-                <small>{option.description}</small>
+                <strong>{t(`type.${value}`)}</strong>
+                <small>{t(`create.type.${value}`)}</small>
               </span>
             </label>
           ))}
@@ -121,14 +109,14 @@ export default function CreateTournamentPage() {
 
         {type === TOURNAMENT_TYPES.SWISS && (
           <label>
-            Antall Swiss-runder (valgfritt)
+            {t('create.swissRounds')}
             <input
               type="number"
               min="1"
               step="1"
               value={swissRounds}
               onChange={(e) => setSwissRounds(e.target.value)}
-              placeholder="Auto (≈ log₂ av antall lag, minst 3)"
+              placeholder={t('create.swissRoundsPlaceholder')}
             />
           </label>
         )}
@@ -136,7 +124,7 @@ export default function CreateTournamentPage() {
         {error && <p className="form-error">{error}</p>}
 
         <button type="submit" className="btn btn-primary">
-          Opprett
+          {t('create.submit')}
         </button>
       </form>
     </section>

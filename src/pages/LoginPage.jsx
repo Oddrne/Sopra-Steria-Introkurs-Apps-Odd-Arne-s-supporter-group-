@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
+import { useI18n } from '../i18n/I18nContext.jsx'
 
 export default function LoginPage() {
   const { currentUser, login, register } = useApp()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [mode, setMode] = useState('login')
   const [name, setName] = useState('')
@@ -25,7 +27,7 @@ export default function LoginPage() {
           : await register(name, email, password)
 
       if (!result.ok) {
-        setError(result.error)
+        setError(t(result.error))
         return
       }
       navigate('/tournaments')
@@ -36,17 +38,13 @@ export default function LoginPage() {
 
   return (
     <section className="auth-panel">
-      <h1>{mode === 'login' ? 'Logg inn' : 'Registrer deg'}</h1>
-      <p className="muted">
-        Demo: <code>kjell@kjellgames.no</code> / <code>demo</code> (admin),{' '}
-        <code>anna@kjellgames.no</code> (arrangør), <code>per@example.com</code> (spiller) — alle
-        med passord <code>demo</code>.
-      </p>
+      <h1>{mode === 'login' ? t('login.title') : t('login.registerTitle')}</h1>
+      <p className="muted">{t('login.demo')}</p>
 
       <form className="form" onSubmit={handleSubmit}>
         {mode === 'register' && (
           <label>
-            Visningsnavn
+            {t('login.displayName')}
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -56,7 +54,7 @@ export default function LoginPage() {
           </label>
         )}
         <label>
-          E-post
+          {t('login.email')}
           <input
             type="email"
             value={email}
@@ -66,7 +64,7 @@ export default function LoginPage() {
           />
         </label>
         <label>
-          Passord
+          {t('login.password')}
           <input
             type="password"
             value={password}
@@ -79,30 +77,34 @@ export default function LoginPage() {
         {error && <p className="form-error">{error}</p>}
 
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? 'Vent…' : mode === 'login' ? 'Logg inn' : 'Opprett konto'}
+          {busy
+            ? t('login.wait')
+            : mode === 'login'
+              ? t('login.submit')
+              : t('login.createAccount')}
         </button>
       </form>
 
       <p className="switch-mode">
         {mode === 'login' ? (
           <>
-            Ny her?{' '}
+            {t('login.newHere')}{' '}
             <button type="button" className="linkish" onClick={() => setMode('register')}>
-              Registrer deg
+              {t('login.register')}
             </button>
           </>
         ) : (
           <>
-            Har konto?{' '}
+            {t('login.hasAccount')}{' '}
             <button type="button" className="linkish" onClick={() => setMode('login')}>
-              Logg inn
+              {t('login.submit')}
             </button>
           </>
         )}
       </p>
 
       <p>
-        <Link to="/">Til forsiden</Link>
+        <Link to="/">{t('login.toHome')}</Link>
       </p>
     </section>
   )

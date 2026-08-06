@@ -1,10 +1,12 @@
 import { useId } from 'react'
+import { useI18n } from '../i18n/I18nContext.jsx'
 
 /**
  * Pokal / vinnerbanner for avsluttet turnering.
  */
 export default function WinnerTrophy({ winner, tournamentName }) {
   const uid = useId().replace(/:/g, '')
+  const { t } = useI18n()
   if (!winner) return null
 
   const goldId = `trophyGold-${uid}`
@@ -52,11 +54,11 @@ export default function WinnerTrophy({ winner, tournamentName }) {
         </svg>
       </div>
       <div className="winner-copy">
-        <p className="winner-eyebrow">Turneringsvinner</p>
+        <p className="winner-eyebrow">{t('winner.title')}</p>
         <h2 className="winner-name">{winner.name}</h2>
         <p className="winner-sub">
           {tournamentName}
-          {winner.points != null ? ` · ${winner.points} poeng` : ''}
+          {winner.points != null ? ` · ${t('winner.points', { points: winner.points })}` : ''}
         </p>
       </div>
     </section>

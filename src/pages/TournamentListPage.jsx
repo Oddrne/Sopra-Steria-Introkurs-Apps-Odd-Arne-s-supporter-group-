@@ -1,59 +1,65 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
+import { useI18n } from '../i18n/I18nContext.jsx'
 import StatusBadge, { TypeBadge } from '../components/StatusBadge.jsx'
 
 export default function TournamentListPage() {
   const { tournaments, currentUser, deleteTournament, canManageTournament } = useApp()
+  const { t } = useI18n()
 
   return (
     <section className="page">
       <div className="page-header">
         <div>
-          <h1>Turneringer</h1>
-          <p className="muted">Hei, {currentUser?.name}. Se, meld deg på, eller opprett turneringer.</p>
+          <h1>{t('list.title')}</h1>
+          <p className="muted">{t('list.hello', { name: currentUser?.name })}</p>
         </div>
         <Link className="btn btn-primary" to="/tournaments/new">
-          Ny turnering
+          {t('list.new')}
         </Link>
       </div>
 
       {tournaments.length === 0 ? (
         <div className="empty-state">
-          <p>Ingen turneringer ennå.</p>
+          <p>{t('list.empty')}</p>
           <Link className="btn btn-secondary" to="/tournaments/new">
-            Opprett den første
+            {t('list.createFirst')}
           </Link>
         </div>
       ) : (
         <ul className="tournament-list">
-          {tournaments.map((t) => (
-            <li key={t.id} className="tournament-row">
+          {tournaments.map((tourney) => (
+            <li key={tourney.id} className="tournament-row">
               <div className="tournament-row-main">
-                <Link to={`/tournaments/${t.id}`} className="tournament-name">
-                  {t.name}
+                <Link to={`/tournaments/${tourney.id}`} className="tournament-name">
+                  {tourney.name}
                 </Link>
                 <div className="tournament-meta">
-                  <TypeBadge type={t.type} />
-                  <StatusBadge status={t.status} />
+                  <TypeBadge type={tourney.type} />
+                  <StatusBadge status={tourney.status} />
                   <span className="muted">
-                    {t.participants.length} deltakere
-                    {t.matches.length ? ` · ${t.matches.length} kamper` : ''}
+                    {t('list.participants', { count: tourney.participants.length })}
+                    {tourney.matches.length
+                      ? ` · ${t('list.matches', { count: tourney.matches.length })}`
+                      : ''}
                   </span>
                 </div>
               </div>
               <div className="tournament-row-actions">
-                <Link className="btn btn-secondary" to={`/tournaments/${t.id}`}>
-                  Åpne
+                <Link className="btn btn-secondary" to={`/tournaments/${tourney.id}`}>
+                  {t('list.open')}
                 </Link>
-                {canManageTournament(t) && (
+                {canManageTournament(tourney) && (
                   <button
                     type="button"
                     className="btn btn-ghost"
                     onClick={() => {
-                      if (window.confirm(`Slette «${t.name}»?`)) deleteTournament(t.id)
+                      if (window.confirm(t('list.deleteConfirm', { name: tourney.name }))) {
+                        deleteTournament(tourney.id)
+                      }
                     }}
                   >
-                    Slett
+                    {t('list.delete')}
                   </button>
                 )}
               </div>

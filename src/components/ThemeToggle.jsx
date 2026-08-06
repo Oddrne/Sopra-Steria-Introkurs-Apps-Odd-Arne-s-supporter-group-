@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useI18n } from '../i18n/I18nContext.jsx'
 
 const STORAGE_KEY = 'kjell-games-theme'
 
@@ -42,6 +43,7 @@ function MoonIcon() {
 }
 
 export default function ThemeToggle() {
+  const { t } = useI18n()
   const [theme, setTheme] = useState(getInitialTheme)
   const isLight = theme === 'light'
 
@@ -65,8 +67,8 @@ export default function ThemeToggle() {
       onClick={toggleTheme}
       role="switch"
       aria-checked={isLight}
-      aria-label={isLight ? 'Bytt til mørk modus' : 'Bytt til lys modus'}
-      title={isLight ? 'Mørk modus' : 'Lys modus'}
+      aria-label={isLight ? t('theme.toDark') : t('theme.toLight')}
+      title={isLight ? t('theme.dark') : t('theme.light')}
     >
       <span className="theme-toggle__track">
         <span className="theme-toggle__glyph theme-toggle__glyph--sun">

@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   useCallback,
   useContext,
@@ -52,7 +52,7 @@ export function AppProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const user = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase())
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      return { ok: false, error: 'Feil e-post eller passord' }
+      return { ok: false, error: 'errors.wrongPassword' }
     }
     setState((s) => ({ ...s, currentUserId: user.id }))
     return { ok: true }
@@ -64,10 +64,10 @@ export function AppProvider({ children }) {
 
   const register = useCallback(async (name, email, password) => {
     if (state.users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
-      return { ok: false, error: 'E-post er allerede i bruk' }
+      return { ok: false, error: 'errors.emailTaken' }
     }
     if (!name.trim() || password.length < 3) {
-      return { ok: false, error: 'Navn og passord (min. 3 tegn) kreves' }
+      return { ok: false, error: 'errors.namePasswordRequired' }
     }
     const passwordHash = await hashPassword(password)
     const user = {
@@ -86,16 +86,16 @@ export function AppProvider({ children }) {
   }, [state.users])
 
   const createTournament = useCallback(({ name, type, maxParticipants, swissRounds }) => {
-    if (!state.currentUserId) return { ok: false, error: 'Du må være innlogget' }
+    if (!state.currentUserId) return { ok: false, error: 'errors.mustLogin' }
     const max = maxParticipants ? Number(maxParticipants) : null
     if (max != null && (!Number.isInteger(max) || max < 2)) {
-      return { ok: false, error: 'Maks deltakere må være et heltall ≥ 2' }
+      return { ok: false, error: 'errors.maxParticipants' }
     }
     let rounds = null
     if (type === TOURNAMENT_TYPES.SWISS) {
       rounds = swissRounds ? Number(swissRounds) : null
       if (rounds != null && (!Number.isInteger(rounds) || rounds < 1)) {
-        return { ok: false, error: 'Antall Swiss-runder må være et heltall ≥ 1' }
+        return { ok: false, error: 'errors.swissRounds' }
       }
     }
     const tournament = {
@@ -123,24 +123,24 @@ export function AppProvider({ children }) {
 
   const joinTournament = useCallback((tournamentId) => {
     const user = state.users.find((u) => u.id === state.currentUserId)
-    if (!user) return { ok: false, error: 'Du må være innlogget' }
+    if (!user) return { ok: false, error: 'errors.mustLogin' }
 
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
-    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (!tournament) return { ok: false, error: 'errors.tournamentNotFound' }
     if (
       tournament.status !== TOURNAMENT_STATUSES.REGISTRATION &&
       tournament.status !== TOURNAMENT_STATUSES.DRAFT
     ) {
-      return { ok: false, error: 'Påmelding er stengt' }
+      return { ok: false, error: 'errors.registrationClosed' }
     }
     if (tournament.status === TOURNAMENT_STATUSES.DRAFT) {
-      return { ok: false, error: 'Påmelding er stengt' }
+      return { ok: false, error: 'errors.registrationClosed' }
     }
     if (tournament.participants.some((p) => p.userId === user.id)) {
-      return { ok: false, error: 'Du er allerede påmeldt' }
+      return { ok: false, error: 'errors.alreadyJoined' }
     }
     if (tournament.maxParticipants && tournament.participants.length >= tournament.maxParticipants) {
-      return { ok: false, error: 'Turneringen er full' }
+      return { ok: false, error: 'errors.tournamentFull' }
     }
 
     setState((s) => ({
@@ -169,21 +169,21 @@ export function AppProvider({ children }) {
 
   const addGuestParticipant = useCallback((tournamentId, name) => {
     const trimmed = name.trim()
-    if (!trimmed) return { ok: false, error: 'Navn kreves' }
+    if (!trimmed) return { ok: false, error: 'errors.nameRequired' }
 
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
-    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (!tournament) return { ok: false, error: 'errors.tournamentNotFound' }
     if (
       tournament.status === TOURNAMENT_STATUSES.ACTIVE ||
       tournament.status === TOURNAMENT_STATUSES.FINISHED
     ) {
-      return { ok: false, error: 'Kan ikke legge til etter start' }
+      return { ok: false, error: 'errors.cannotAddAfterStart' }
     }
     if (tournament.participants.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
-      return { ok: false, error: 'Navnet er allerede med' }
+      return { ok: false, error: 'errors.nameTaken' }
     }
     if (tournament.maxParticipants && tournament.participants.length >= tournament.maxParticipants) {
-      return { ok: false, error: 'Turneringen er full' }
+      return { ok: false, error: 'errors.tournamentFull' }
     }
 
     setState((s) => ({
@@ -230,12 +230,12 @@ export function AppProvider({ children }) {
   const setParticipantRanking = useCallback((tournamentId, participantId, ranking) => {
     const normalized = normalizeRanking(ranking)
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
-    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (!tournament) return { ok: false, error: 'errors.tournamentNotFound' }
     if (
       tournament.status === TOURNAMENT_STATUSES.ACTIVE ||
       tournament.status === TOURNAMENT_STATUSES.FINISHED
     ) {
-      return { ok: false, error: 'Ranking kan ikke endres etter at kampene er generert' }
+      return { ok: false, error: 'errors.rankingLocked' }
     }
 
     setState((s) => ({
@@ -279,15 +279,15 @@ export function AppProvider({ children }) {
 
   const generateMatches = useCallback((tournamentId) => {
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
-    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (!tournament) return { ok: false, error: 'errors.tournamentNotFound' }
     if (tournament.participants.length < 2) {
-      return { ok: false, error: 'Minst 2 deltakere kreves' }
+      return { ok: false, error: 'errors.minParticipants' }
     }
     if (
       tournament.status === TOURNAMENT_STATUSES.ACTIVE ||
       tournament.status === TOURNAMENT_STATUSES.FINISHED
     ) {
-      return { ok: false, error: 'Kampene er allerede generert' }
+      return { ok: false, error: 'errors.matchesAlreadyGenerated' }
     }
 
     let matches
@@ -303,7 +303,7 @@ export function AppProvider({ children }) {
       swissRounds = swissRounds ?? defaultSwissRoundCount(tournament.participants.length)
       matches = generateSwissRoundOne(tournament.participants)
     } else {
-      return { ok: false, error: 'Ukjent turneringstype' }
+      return { ok: false, error: 'errors.unknownType' }
     }
 
     setState((s) => ({
@@ -324,14 +324,14 @@ export function AppProvider({ children }) {
 
   const generateNextRound = useCallback((tournamentId) => {
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
-    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (!tournament) return { ok: false, error: 'errors.tournamentNotFound' }
     if (tournament.type !== TOURNAMENT_TYPES.SWISS) {
-      return { ok: false, error: 'Neste runde gjelder kun Swiss' }
+      return { ok: false, error: 'errors.nextRoundSwissOnly' }
     }
     if (!canGenerateNextSwissRound(tournament)) {
       return {
         ok: false,
-        error: 'Fullfør gjeldende runde, eller alle Swiss-runder er allerede generert',
+        error: 'errors.nextRoundNotReady',
       }
     }
 
@@ -349,20 +349,20 @@ export function AppProvider({ children }) {
 
   const setMatchResults = useCallback((tournamentId, results) => {
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
-    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
-    if (!results.length) return { ok: false, error: 'Ingen resultater å lagre' }
+    if (!tournament) return { ok: false, error: 'errors.tournamentNotFound' }
+    if (!results.length) return { ok: false, error: 'errors.nothingToSave' }
 
     const parsed = []
     for (const { matchId, homeScore, awayScore } of results) {
       const hs = Number(homeScore)
       const as = Number(awayScore)
       if (!Number.isInteger(hs) || !Number.isInteger(as) || hs < 0 || as < 0) {
-        return { ok: false, error: 'Poeng må være hele tall ≥ 0 for alle kamper' }
+        return { ok: false, error: 'errors.scoreInvalidAll' }
       }
       const match = tournament.matches.find((m) => m.id === matchId)
-      if (!match) return { ok: false, error: 'Kamp ikke funnet' }
+      if (!match) return { ok: false, error: 'errors.matchNotFound' }
       if (tournament.type === TOURNAMENT_TYPES.CUP && hs === as) {
-        return { ok: false, error: 'Cup krever en vinner — uavgjort er ikke tillatt' }
+        return { ok: false, error: 'errors.cupNoDraw' }
       }
       parsed.push({ matchId, homeScore: hs, awayScore: as })
     }
@@ -450,3 +450,4 @@ export function useApp() {
   if (!ctx) throw new Error('useApp must be used within AppProvider')
   return ctx
 }
+

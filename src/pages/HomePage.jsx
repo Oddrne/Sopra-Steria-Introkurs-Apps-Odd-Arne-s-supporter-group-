@@ -1,31 +1,30 @@
 import { Link } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
+import { useI18n } from '../i18n/I18nContext.jsx'
 
 export default function HomePage() {
   const { currentUser } = useApp()
+  const { t } = useI18n()
 
   return (
     <section className="hero">
       <div className="hero-copy">
-        <p className="eyebrow">Kjell Games AS</p>
+        <p className="eyebrow">{t('home.eyebrow')}</p>
         <h1>Kjell Games</h1>
-        <p className="lede">
-          Opprett turneringer, registrer resultater og følg fremdriften — bygget for demo på én
-          nettside.
-        </p>
+        <p className="lede">{t('home.lede')}</p>
         <div className="hero-actions">
           {currentUser ? (
             <>
               <Link className="btn btn-primary" to="/tournaments/new">
-                Opprett turnering
+                {t('home.create')}
               </Link>
               <Link className="btn btn-secondary" to="/tournaments">
-                Se turneringer
+                {t('home.view')}
               </Link>
             </>
           ) : (
             <Link className="btn btn-primary" to="/login">
-              Logg inn for å starte
+              {t('home.loginCta')}
             </Link>
           )}
         </div>

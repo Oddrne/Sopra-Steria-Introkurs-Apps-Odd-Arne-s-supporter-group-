@@ -1,5 +1,5 @@
 import { MATCH_STATUSES } from './constants.js'
-import { normalizeRanking, rankingLabel } from './seeding.js'
+import { normalizeRanking } from './seeding.js'
 import { computeStandings } from './series.js'
 
 function playedPairs(matches) {
@@ -17,7 +17,6 @@ function havePlayed(played, a, b) {
   return played.has(a < b ? `${a}|${b}` : `${b}|${a}`)
 }
 
-/** Standings basert på kamper før gitt runde. */
 export function standingsBeforeRound(participants, matches, round) {
   const prior = matches.filter(
     (m) => m.round < round && m.status === MATCH_STATUSES.COMPLETED,
@@ -25,7 +24,6 @@ export function standingsBeforeRound(participants, matches, round) {
   return computeStandings(participants, prior)
 }
 
-/** Poenggrupper (høyest først). */
 export function buildScoreGroups(standings) {
   const map = new Map()
   for (const row of standings) {
@@ -37,12 +35,11 @@ export function buildScoreGroups(standings) {
     .map(([points, rows]) => ({
       key: `pts-${points}`,
       points,
-      label: `${points} p`,
+      ranking: null,
       rows,
     }))
 }
 
-/** Ranking-grupper for runde 1 (før poeng finnes). */
 export function buildRankingGroups(participants) {
   const map = new Map()
   for (const p of participants) {
@@ -56,7 +53,6 @@ export function buildRankingGroups(participants) {
       key: `rank-${ranking}`,
       ranking,
       points: null,
-      label: `${ranking} · ${rankingLabel(ranking)}`,
       rows: rows.map((p) => ({
         participantId: p.id,
         name: p.name,
@@ -66,10 +62,6 @@ export function buildRankingGroups(participants) {
     }))
 }
 
-/**
- * Grupper som brukes til å visualisere pairing-grunnlaget for en runde.
- * Runde 1 → ranking. Senere → poeng før runden.
- */
 export function groupsForRound(participants, matches, round) {
   if (round <= 1) return { mode: 'ranking', groups: buildRankingGroups(participants) }
   const standings = standingsBeforeRound(participants, matches, round)
@@ -78,7 +70,7 @@ export function groupsForRound(participants, matches, round) {
 
 export function explainSwissPairing(match, participants, allMatches) {
   if (match.isBye) {
-    return { kind: 'bye', label: 'Bye', detail: 'Oddetall — fri runde' }
+    return { kind: 'bye' }
   }
 
   const byId = Object.fromEntries(participants.map((p) => [p.id, p]))
@@ -88,11 +80,7 @@ export function explainSwissPairing(match, participants, allMatches) {
   if (match.round === 1) {
     const hr = normalizeRanking(home?.ranking)
     const ar = normalizeRanking(away?.ranking)
-    return {
-      kind: 'seed',
-      label: `Seedet (${hr} vs ${ar})`,
-      detail: `${rankingLabel(hr)} vs ${rankingLabel(ar)} — sterke møter ikke hverandre først`,
-    }
+    return { kind: 'seed', hr, ar }
   }
 
   const standings = standingsBeforeRound(participants, allMatches, match.round)
@@ -103,27 +91,9 @@ export function explainSwissPairing(match, participants, allMatches) {
   const prior = allMatches.filter((m) => m.round < match.round)
   const rematch = havePlayed(playedPairs(prior), match.homeParticipantId, match.awayParticipantId)
 
-  if (rematch) {
-    return {
-      kind: 'rematch',
-      label: `Rematch · ${hp} vs ${ap} p`,
-      detail: 'Ingen annen ledig motstander uten rematch',
-    }
-  }
-
-  if (hp === ap) {
-    return {
-      kind: 'same',
-      label: `Samme poeng (${hp}–${ap})`,
-      detail: 'Vinnere møter vinnere / lik situasjon',
-    }
-  }
-
-  return {
-    kind: 'adjacent',
-    label: `Poeng ${hp} vs ${ap}`,
-    detail: 'Nærliggende poenggrupper',
-  }
+  if (rematch) return { kind: 'rematch', hp, ap }
+  if (hp === ap) return { kind: 'same', hp, ap }
+  return { kind: 'adjacent', hp, ap }
 }
 
 export function roundsWithMeta(participants, matches) {
@@ -140,7 +110,6 @@ export function roundsWithMeta(participants, matches) {
       const sorted = [...roundMatches].sort((a, b) => a.number - b.number)
       return {
         round,
-        label: sorted[0]?.roundName ?? `Swiss runde ${round}`,
         mode,
         groups,
         matches: sorted.map((match) => ({
@@ -149,4 +118,10 @@ export function roundsWithMeta(participants, matches) {
         })),
       }
     })
+}
+
+export function rankWordKey(ranking) {
+  if (ranking === 3) return 'rank.strong'
+  if (ranking === 1) return 'rank.weak'
+  return 'rank.mid'
 }

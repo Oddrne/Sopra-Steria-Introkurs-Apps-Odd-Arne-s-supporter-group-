@@ -2,11 +2,9 @@ import { forwardRef, useMemo } from 'react'
 import StandingsTable from './StandingsTable.jsx'
 import WinnerTrophy from './WinnerTrophy.jsx'
 import { TypeBadge } from './StatusBadge.jsx'
-import {
-  MATCH_STATUSES,
-  TOURNAMENT_TYPE_LABELS,
-  normalizeTournamentType,
-} from '../domain/constants.js'
+import { MATCH_STATUSES, normalizeTournamentType } from '../domain/constants.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
+import { LOCALES } from '../i18n/messages.js'
 
 /**
  * Dedikert kort for PNG-eksport av resultat (vinner + tabell + runderesultater).
@@ -15,6 +13,7 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
   { tournament, winner, standings, participantById = {} },
   ref,
 ) {
+  const { t, locale } = useI18n()
   const type = normalizeTournamentType(tournament.type)
   const completed = tournament.matches.filter((m) => m.status === 'completed' && !m.isBye).length
 
@@ -28,15 +27,17 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
       .sort((a, b) => a[0] - b[0])
       .map(([round, matches]) => ({
         round,
-        label: matches[0]?.roundName ?? `Runde ${round}`,
+        label: matches[0]?.roundName ?? t('tree.round', { n: round }),
         matches: [...matches].sort((a, b) => a.number - b.number),
       }))
-  }, [tournament.matches])
+  }, [tournament.matches, t])
 
-  function nameOf(id, fallback = 'TBD') {
+  function nameOf(id, fallback = t('export.tbd')) {
     if (!id) return fallback
     return participantById[id]?.name ?? fallback
   }
+
+  const dateLocale = locale === LOCALES.en ? 'en-GB' : 'nb-NO'
 
   return (
     <div ref={ref} className="export-card">
@@ -45,7 +46,7 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
           <span className="brand-mark">KG</span>
           <div>
             <strong>Kjell Games</strong>
-            <em>Turneringsresultat</em>
+            <em>{t('export.subtitle')}</em>
           </div>
         </div>
         <TypeBadge type={type} />
@@ -53,29 +54,29 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
 
       <h2 className="export-title">{tournament.name}</h2>
       <p className="export-meta muted">
-        {TOURNAMENT_TYPE_LABELS[type] ?? type}
-        {' · '}
-        {tournament.participants.length} deltakere
-        {' · '}
-        {completed} kamper spilt
+        {t('export.meta', {
+          type: t(`type.${type}`),
+          participants: tournament.participants.length,
+          matches: completed,
+        })}
       </p>
 
       {winner ? (
         <WinnerTrophy winner={winner} tournamentName={tournament.name} />
       ) : (
-        <p className="muted">Ingen kåret vinner ennå — viser status så langt.</p>
+        <p className="muted">{t('export.noWinner')}</p>
       )}
 
       {standings.length > 0 && (
         <div className="export-standings">
-          <h3>Tabell</h3>
+          <h3>{t('export.table')}</h3>
           <StandingsTable standings={standings} participants={tournament.participants} />
         </div>
       )}
 
       {rounds.length > 0 && (
         <div className="export-rounds">
-          <h3>Resultater per runde</h3>
+          <h3>{t('export.rounds')}</h3>
           {rounds.map(({ round, label, matches }) => (
             <div key={round} className="export-round-block">
               <h4>{label}</h4>
@@ -84,7 +85,10 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
                   if (match.isBye) {
                     return (
                       <li key={match.id} className="export-match-row is-bye">
-                        <span>{nameOf(match.homeParticipantId || match.awayParticipantId)} — bye</span>
+                        <span>
+                          {nameOf(match.homeParticipantId || match.awayParticipantId)} —{' '}
+                          {t('detail.bye')}
+                        </span>
                         <strong>W</strong>
                       </li>
                     )
@@ -107,8 +111,8 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
                         {done
                           ? `${match.homeScore} — ${match.awayScore}`
                           : pending
-                            ? 'TBD'
-                            : 'Venter'}
+                            ? t('export.tbd')
+                            : t('export.waiting')}
                       </strong>
                     </li>
                   )
@@ -120,7 +124,7 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
       )}
 
       <footer className="export-footer">
-        kjell-games-turnering · {new Date().toLocaleDateString('nb-NO')}
+        kjell-games-turnering · {new Date().toLocaleDateString(dateLocale)}
       </footer>
     </div>
   )

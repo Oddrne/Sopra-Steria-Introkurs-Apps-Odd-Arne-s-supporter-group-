@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { MATCH_STATUSES, TOURNAMENT_TYPES, normalizeTournamentType } from '../domain/constants.js'
 import { getMatchWinner } from '../domain/cup.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
 
 /**
  * Visuelt kampetre / bracket-graf.
@@ -20,7 +21,7 @@ function nameOf(participantById, id, fallback = 'TBD') {
   return participantById[id]?.name ?? fallback
 }
 
-function CupTree({ matches, participantById }) {
+function CupTree({ matches, participantById, t }) {
   const layout = useMemo(() => {
     const byRound = new Map()
     for (const m of matches) {
@@ -31,7 +32,7 @@ function CupTree({ matches, participantById }) {
       .sort((a, b) => a[0] - b[0])
       .map(([round, list]) => ({
         round,
-        label: list[0]?.roundName ?? `Runde ${round}`,
+        label: list[0]?.roundName ?? t('tree.round', { n: round }),
         matches: [...list].sort((a, b) => a.number - b.number),
       }))
 
@@ -69,7 +70,7 @@ function CupTree({ matches, participantById }) {
     }
 
     return { rounds, positions, links, width, height }
-  }, [matches, participantById])
+  }, [matches, participantById, t])
 
   if (!layout) return null
 
@@ -140,7 +141,7 @@ function CupTree({ matches, participantById }) {
   )
 }
 
-function RoundTree({ matches, participantById }) {
+function RoundTree({ matches, participantById, t }) {
   const layout = useMemo(() => {
     const byRound = new Map()
     for (const m of matches) {
@@ -152,7 +153,7 @@ function RoundTree({ matches, participantById }) {
       .sort((a, b) => a[0] - b[0])
       .map(([round, list]) => ({
         round,
-        label: list[0]?.roundName ?? `Runde ${round}`,
+        label: list[0]?.roundName ?? t('tree.round', { n: round }),
         matches: [...list].sort((a, b) => a.number - b.number),
       }))
 
@@ -173,7 +174,7 @@ function RoundTree({ matches, participantById }) {
     const height = PAD_Y * 2 + maxInRound * ROW_H
 
     return { rounds, positions, width, height }
-  }, [matches])
+  }, [matches, t])
 
   if (!layout) return null
 
@@ -270,8 +271,10 @@ function truncate(text, max) {
 }
 
 export default function TournamentTree({ tournament, participantById }) {
+  const { t } = useI18n()
+
   if (!tournament?.matches?.length) {
-    return <p className="muted">Generer kamper for å se kampetreet.</p>
+    return <p className="muted">{t('tree.empty')}</p>
   }
 
   const isCup = normalizeTournamentType(tournament.type) === TOURNAMENT_TYPES.CUP
@@ -280,15 +283,13 @@ export default function TournamentTree({ tournament, participantById }) {
     <div className="tree-wrap">
       <div className="tree-scroll">
         {isCup ? (
-          <CupTree matches={tournament.matches} participantById={participantById} />
+          <CupTree matches={tournament.matches} participantById={participantById} t={t} />
         ) : (
-          <RoundTree matches={tournament.matches} participantById={participantById} />
+          <RoundTree matches={tournament.matches} participantById={participantById} t={t} />
         )}
       </div>
       <p className="tree-hint muted">
-        {isCup
-          ? 'Knockout-tre: vinneren går videre langs koblingene til høyre.'
-          : 'Kampetre per runde: se hvem som møter hvem i hver runde.'}
+        {isCup ? t('tree.cupHint') : t('tree.roundHint')}
       </p>
     </div>
   )

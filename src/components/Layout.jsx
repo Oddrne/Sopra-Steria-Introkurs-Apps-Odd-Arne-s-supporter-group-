@@ -1,9 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
+import { useI18n } from '../i18n/I18nContext.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
+import LanguageToggle from './LanguageToggle.jsx'
 
 export default function Layout() {
   const { currentUser, logout } = useApp()
+  const { t } = useI18n()
 
   return (
     <div className="app-shell">
@@ -12,22 +15,22 @@ export default function Layout() {
           <span className="brand-mark">KG</span>
           <span className="brand-text">
             <strong>Kjell Games</strong>
-            <em>Turnering</em>
+            <em>{t('brand.tagline')}</em>
           </span>
         </NavLink>
 
         <nav className="nav">
           {currentUser ? (
             <>
-              <NavLink to="/tournaments">Turneringer</NavLink>
-              <NavLink to="/tournaments/new">Ny turnering</NavLink>
+              <NavLink to="/tournaments">{t('nav.tournaments')}</NavLink>
+              <NavLink to="/tournaments/new">{t('nav.newTournament')}</NavLink>
               <span className="nav-user">{currentUser.name}</span>
               <button type="button" className="btn btn-ghost" onClick={logout}>
-                Logg ut
+                {t('nav.logout')}
               </button>
             </>
           ) : (
-            <NavLink to="/login">Logg inn</NavLink>
+            <NavLink to="/login">{t('nav.login')}</NavLink>
           )}
         </nav>
       </header>
@@ -37,10 +40,11 @@ export default function Layout() {
       </main>
 
       <footer className="footer">
-        <p className="footer-copy">
-          Kjell Games MVP alle-mot-alle, cup og Swiss.
-        </p>
-        <ThemeToggle />
+        <p className="footer-copy">{t('footer.copy')}</p>
+        <div className="footer-controls">
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
       </footer>
     </div>
   )

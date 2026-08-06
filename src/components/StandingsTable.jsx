@@ -1,6 +1,9 @@
 import { normalizeRanking } from '../domain/seeding.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
 
 export default function StandingsTable({ standings, participants = [] }) {
+  const { t } = useI18n()
+
   if (!standings.length) {
     return <p className="muted">Ingen resultater ennå.</p>
   }
@@ -15,7 +18,7 @@ export default function StandingsTable({ standings, participants = [] }) {
         <thead>
           <tr>
             <th>#</th>
-            <th>Lag</th>
+            <th>{t('standings.team')}</th>
             <th>R</th>
             <th>K</th>
             <th>S</th>

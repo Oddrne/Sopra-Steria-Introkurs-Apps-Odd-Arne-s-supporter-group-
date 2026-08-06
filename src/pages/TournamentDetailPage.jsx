@@ -14,7 +14,7 @@ import {
   usesStandingsTable,
 } from '../domain/constants.js'
 import { computeStandings } from '../domain/series.js'
-import { RANKING_OPTIONS, normalizeRanking, rankingLabel } from '../domain/seeding.js'
+import { normalizeRanking } from '../domain/seeding.js'
 import {
   canGenerateNextSwissRound,
   currentSwissRound,
@@ -22,9 +22,14 @@ import {
 } from '../domain/swiss.js'
 import { getTournamentWinner } from '../domain/winner.js'
 import { exportElementAsPng, slugifyFilename } from '../utils/exportImage.js'
+import { useI18n } from '../i18n/I18nContext.jsx'
+import { rankWordKey } from '../domain/swissView.js'
+
+const RANKING_VALUES = [3, 2, 1]
 
 export default function TournamentDetailPage() {
   const { id } = useParams()
+  const { t } = useI18n()
   const {
     tournaments,
     currentUser,
@@ -71,8 +76,8 @@ export default function TournamentDetailPage() {
   if (!tournament) {
     return (
       <section className="page">
-        <h1>Fant ikke turneringen</h1>
-        <Link to="/tournaments">Tilbake</Link>
+        <h1>{t('detail.notFound')}</h1>
+        <Link to="/tournaments">{t('detail.back')}</Link>
       </section>
     )
   }
@@ -101,18 +106,18 @@ export default function TournamentDetailPage() {
 
   function handleJoin() {
     const result = joinTournament(tournament.id)
-    flash(result.ok ? 'Du er påmeldt!' : result.error)
+    flash(result.ok ? t('detail.joinedOk') : t(result.error))
   }
 
   function handleAddGuest(event) {
     event.preventDefault()
     const result = addGuestParticipant(tournament.id, guestName)
     if (!result.ok) {
-      flash(result.error)
+      flash(t(result.error))
       return
     }
     setGuestName('')
-    flash('Deltaker lagt til.')
+    flash(t('detail.guestAdded'))
   }
 
   function handleGenerate() {
@@ -120,20 +125,20 @@ export default function TournamentDetailPage() {
     flash(
       result.ok
         ? isSwiss
-          ? 'Swiss runde 1 generert (sterk vs svak).'
-          : 'Kamper generert.'
-        : result.error,
+          ? t('detail.swissRound1')
+          : t('detail.matchesGenerated')
+        : t(result.error),
     )
   }
 
   function handleNextRound() {
     const result = generateNextRound(tournament.id)
-    flash(result.ok ? 'Neste Swiss-runde generert.' : result.error)
+    flash(result.ok ? t('detail.nextSwissOk') : t(result.error))
   }
 
   function handleRankingChange(participantId, value) {
     const result = setParticipantRanking(tournament.id, participantId, value)
-    if (!result.ok) flash(result.error)
+    if (!result.ok) flash(t(result.error))
   }
 
   function handleSaveScore(match) {
@@ -142,7 +147,7 @@ export default function TournamentDetailPage() {
       away: match.awayScore ?? '',
     }
     const result = setMatchResult(tournament.id, match.id, draft.home, draft.away)
-    flash(result.ok ? 'Resultat lagret.' : result.error)
+    flash(result.ok ? t('detail.resultSaved') : t(result.error))
   }
 
   function handleSaveAllScores() {
@@ -157,12 +162,12 @@ export default function TournamentDetailPage() {
       .filter(Boolean)
 
     if (!results.length) {
-      flash('Fyll inn poeng på minst én kamp før du lagrer.')
+      flash(t('detail.fillScores'))
       return
     }
 
     const result = setMatchResults(tournament.id, results)
-    flash(result.ok ? `${result.saved} resultat(er) lagret.` : result.error)
+    flash(result.ok ? t('detail.resultsSaved', { count: result.saved }) : t(result.error))
   }
 
   async function handleExportImage() {
@@ -173,9 +178,9 @@ export default function TournamentDetailPage() {
         exportRef.current,
         `${slugifyFilename(tournament.name)}-resultat.png`,
       )
-      flash('Bilde eksportert.')
+      flash(t('detail.exported'))
     } catch (err) {
-      flash(err?.message || 'Kunne ikke eksportere bilde.')
+      flash(err?.message || t('detail.exportFailed'))
     } finally {
       setExporting(false)
     }
@@ -190,18 +195,23 @@ export default function TournamentDetailPage() {
       <div className="page-header">
         <div>
           <p className="breadcrumb">
-            <Link to="/tournaments">Turneringer</Link> / {tournament.name}
+            <Link to="/tournaments">{t('detail.tournaments')}</Link> / {tournament.name}
           </p>
           <h1>{tournament.name}</h1>
           <div className="tournament-meta">
             <TypeBadge type={tournament.type} />
             <StatusBadge status={tournament.status} />
             {tournament.maxParticipants && (
-              <span className="muted">Maks {tournament.maxParticipants} deltakere</span>
+              <span className="muted">
+                {t('detail.maxParticipants', { count: tournament.maxParticipants })}
+              </span>
             )}
             {isSwiss && (
               <span className="muted">
-                Swiss {currentSwissRound(tournament.matches) || 0}/{swissTotal} runder
+                {t('detail.swissProgress', {
+                  current: currentSwissRound(tournament.matches) || 0,
+                  total: swissTotal,
+                })}
               </span>
             )}
           </div>
@@ -213,7 +223,7 @@ export default function TournamentDetailPage() {
             onClick={handleExportImage}
             disabled={exporting}
           >
-            {exporting ? 'Eksporterer…' : 'Eksporter bilde'}
+            {exporting ? t('detail.exporting') : t('detail.export')}
           </button>
         )}
       </div>
@@ -234,27 +244,22 @@ export default function TournamentDetailPage() {
         <WinnerTrophy winner={winner} tournamentName={tournament.name} />
       )}
 
-      {canEditRoster && (
-        <div className="callout">
-          <strong>Ranking:</strong> 3 = sterk, 1 = svak. I Swiss/cup møtes sterke lag ikke hverandre
-          i starten (sterk vs svak).
-        </div>
-      )}
+      {canEditRoster && <div className="callout">{t('detail.rankingHint')}</div>}
 
       {message && <p className="toast">{message}</p>}
 
       <div className="detail-grid">
         <section className="panel">
-          <h2>Påmelding & deltakere</h2>
+          <h2>{t('detail.signup')}</h2>
 
           {canJoin && (
             <button type="button" className="btn btn-primary" onClick={handleJoin}>
-              Meld meg på
+              {t('detail.join')}
             </button>
           )}
-          {alreadyJoined && <p className="muted">Du er påmeldt.</p>}
+          {alreadyJoined && <p className="muted">{t('detail.joined')}</p>}
           {!registrationOpen && canEditRoster && (
-            <p className="muted">Påmelding er stengt.</p>
+            <p className="muted">{t('detail.registrationClosed')}</p>
           )}
 
           {isManager && canEditRoster && (
@@ -263,10 +268,10 @@ export default function TournamentDetailPage() {
                 <input
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="Legg til gjest (navn)"
+                  placeholder={t('detail.addGuest')}
                 />
                 <button type="submit" className="btn btn-secondary">
-                  Legg til
+                  {t('detail.add')}
                 </button>
               </form>
 
@@ -277,10 +282,10 @@ export default function TournamentDetailPage() {
                     className="btn btn-secondary"
                     onClick={() => {
                       closeRegistration(tournament.id)
-                      flash('Påmelding stengt.')
+                      flash(t('detail.registrationClosedOk'))
                     }}
                   >
-                    Steng påmelding
+                    {t('detail.closeRegistration')}
                   </button>
                 ) : (
                   <button
@@ -288,15 +293,15 @@ export default function TournamentDetailPage() {
                     className="btn btn-secondary"
                     onClick={() => {
                       reopenRegistration(tournament.id)
-                      flash('Påmelding åpnet.')
+                      flash(t('detail.registrationOpenedOk'))
                     }}
                   >
-                    Åpne påmelding
+                    {t('detail.openRegistration')}
                   </button>
                 )}
                 {canGenerate && (
                   <button type="button" className="btn btn-primary" onClick={handleGenerate}>
-                    {isSwiss ? 'Generer runde 1' : 'Generer kamper'}
+                    {isSwiss ? t('detail.generateRound1') : t('detail.generateMatches')}
                   </button>
                 )}
               </div>
@@ -306,24 +311,28 @@ export default function TournamentDetailPage() {
           {isManager && canNextSwiss && (
             <div className="action-row">
               <button type="button" className="btn btn-primary" onClick={handleNextRound}>
-                Generer neste Swiss-runde
+                {t('detail.generateNextSwiss')}
               </button>
             </div>
           )}
 
           {tournament.participants.length === 0 ? (
-            <p className="muted">Ingen deltakere ennå.</p>
+            <p className="muted">{t('detail.noParticipants')}</p>
           ) : (
             <ul className="participant-list">
               {tournament.participants.map((p) => (
                 <li key={p.id} className="participant-row">
                   <span className="participant-info">
                     #{p.seed} {p.name}
-                    {!p.userId && <em className="guest-tag"> gjest</em>}
+                    {!p.userId && <em className="guest-tag"> {t('detail.guest')}</em>}
                     {!canEditRoster && (
                       <em className="rank-tag">
                         {' '}
-                        · rank {normalizeRanking(p.ranking)} ({rankingLabel(p.ranking)})
+                        ·{' '}
+                        {t('detail.rank', {
+                          rank: normalizeRanking(p.ranking),
+                          label: t(rankWordKey(normalizeRanking(p.ranking))),
+                        })}
                       </em>
                     )}
                   </span>
@@ -335,9 +344,9 @@ export default function TournamentDetailPage() {
                           value={normalizeRanking(p.ranking)}
                           onChange={(e) => handleRankingChange(p.id, e.target.value)}
                         >
-                          {RANKING_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
+                          {RANKING_VALUES.map((value) => (
+                            <option key={value} value={value}>
+                              {t(`rank.option.${value}`)}
                             </option>
                           ))}
                         </select>
@@ -349,7 +358,7 @@ export default function TournamentDetailPage() {
                         className="btn btn-ghost"
                         onClick={() => removeParticipant(tournament.id, p.id)}
                       >
-                        Fjern
+                        {t('detail.remove')}
                       </button>
                     )}
                   </span>
@@ -361,14 +370,14 @@ export default function TournamentDetailPage() {
 
         {showTable && (
           <section className="panel panel-highlight">
-            <h2>Tabell</h2>
+            <h2>{t('detail.table')}</h2>
             <StandingsTable standings={standings} participants={tournament.participants} />
           </section>
         )}
 
         {tournament.matches.length > 0 && (
           <section className="panel panel-wide">
-            <h2>{isSwiss ? 'Swiss-tavle' : 'Kampetre'}</h2>
+            <h2>{isSwiss ? t('detail.swissBoard') : t('detail.tree')}</h2>
             {isSwiss ? (
               <SwissBoard tournament={tournament} participantById={participantById} />
             ) : (
@@ -380,18 +389,18 @@ export default function TournamentDetailPage() {
         {tournament.matches.length > 0 && (
           <section className="panel panel-wide">
             <div className="section-header">
-              <h2>Kamper & resultater</h2>
+              <h2>{t('detail.matches')}</h2>
               {isManager && playableMatches.length > 0 && (
                 <button type="button" className="btn btn-primary" onClick={handleSaveAllScores}>
-                  Lagre alle
+                  {t('detail.saveAll')}
                 </button>
               )}
             </div>
             {!isManager && (
-              <p className="muted">Kun arrangør/eier kan registrere resultater i denne MVP-en.</p>
+              <p className="muted">{t('detail.resultsOrganizerOnly')}</p>
             )}
             {matchesByRound.map(([round, matches]) => {
-              const label = matches[0]?.roundName ?? `Runde ${round}`
+              const label = matches[0]?.roundName ?? t('tree.round', { n: round })
               const visible = matches.filter(
                 (m) => playableMatches.some((p) => p.id === m.id) || m.isBye,
               )
@@ -402,18 +411,20 @@ export default function TournamentDetailPage() {
                   <ul className="match-list">
                     {visible.map((match) => {
                       if (match.isBye) {
-                        const winner =
+                        const byeWinner =
                           participantById[match.homeParticipantId || match.awayParticipantId]
                             ?.name ?? '?'
                         return (
                           <li key={match.id} className="match-row is-done">
-                            <span className="match-teams">{winner} — bye</span>
+                            <span className="match-teams">
+                              {byeWinner} — {t('detail.bye')}
+                            </span>
                           </li>
                         )
                       }
 
-                      const home = participantById[match.homeParticipantId]?.name ?? 'TBD'
-                      const away = participantById[match.awayParticipantId]?.name ?? 'TBD'
+                      const home = participantById[match.homeParticipantId]?.name ?? t('detail.tbd')
+                      const away = participantById[match.awayParticipantId]?.name ?? t('detail.tbd')
                       const ready = match.homeParticipantId && match.awayParticipantId
                       const draft = scoreDrafts[match.id] ?? {
                         home: match.homeScore ?? '',
@@ -460,7 +471,7 @@ export default function TournamentDetailPage() {
                                 className="btn btn-secondary"
                                 onClick={() => handleSaveScore(match)}
                               >
-                                {done ? 'Oppdater' : 'Lagre'}
+                                {done ? t('detail.update') : t('detail.save')}
                               </button>
                             </div>
                           ) : (
@@ -468,8 +479,8 @@ export default function TournamentDetailPage() {
                               {done
                                 ? `${match.homeScore} — ${match.awayScore}`
                                 : ready
-                                  ? 'Venter'
-                                  : 'TBD'}
+                                  ? t('detail.waiting')
+                                  : t('detail.tbd')}
                             </span>
                           )}
                         </li>
