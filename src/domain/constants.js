@@ -6,12 +6,14 @@ export const TOURNAMENT_TYPES = {
   ROUND_ROBIN: 'round_robin',
   CUP: 'cup',
   LEAGUE: 'league',
+  SWISS: 'swiss',
 }
 
 export const TOURNAMENT_TYPE_LABELS = {
   round_robin: 'Alle-mot-alle',
   cup: 'Cup (knockout)',
   league: 'Liga',
+  swiss: 'Swiss',
 }
 
 export const TOURNAMENT_STATUSES = {
@@ -41,6 +43,10 @@ export const USER_ROLES = {
 
 export function isSeriesType(type) {
   return type === TOURNAMENT_TYPES.ROUND_ROBIN || type === TOURNAMENT_TYPES.LEAGUE
+}
+
+export function usesStandingsTable(type) {
+  return isSeriesType(type) || type === TOURNAMENT_TYPES.SWISS
 }
 
 export function canOrganize(user) {

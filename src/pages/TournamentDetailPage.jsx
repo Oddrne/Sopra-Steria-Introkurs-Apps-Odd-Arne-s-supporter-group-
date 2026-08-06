@@ -8,10 +8,16 @@ import {
   MATCH_STATUSES,
   TOURNAMENT_STATUSES,
   TOURNAMENT_TYPES,
-  isSeriesType,
+  usesStandingsTable,
 } from '../domain/constants.js'
 import { computeStandings } from '../domain/series.js'
 import { getCupChampion } from '../domain/cup.js'
+import { RANKING_OPTIONS, normalizeRanking, rankingLabel } from '../domain/seeding.js'
+import {
+  canGenerateNextSwissRound,
+  currentSwissRound,
+  defaultSwissRoundCount,
+} from '../domain/swiss.js'
 
 export default function TournamentDetailPage() {
   const { id } = useParams()
@@ -21,9 +27,11 @@ export default function TournamentDetailPage() {
     joinTournament,
     addGuestParticipant,
     removeParticipant,
+    setParticipantRanking,
     closeRegistration,
     reopenRegistration,
     generateMatches,
+    generateNextRound,
     setMatchResult,
     canManageTournament,
   } = useApp()
@@ -39,7 +47,7 @@ export default function TournamentDetailPage() {
   }, [tournament])
 
   const standings = useMemo(() => {
-    if (!tournament || !isSeriesType(tournament.type)) return []
+    if (!tournament || !usesStandingsTable(tournament.type)) return []
     return computeStandings(tournament.participants, tournament.matches)
   }, [tournament])
 
@@ -70,9 +78,13 @@ export default function TournamentDetailPage() {
   const alreadyJoined = tournament.participants.some((p) => p.userId === currentUser?.id)
   const canJoin = registrationOpen && currentUser && !alreadyJoined
   const canGenerate = isManager && canEditRoster && tournament.participants.length >= 2
-  const series = isSeriesType(tournament.type)
+  const showTable = usesStandingsTable(tournament.type) && tournament.matches.length > 0
   const isCup = tournament.type === TOURNAMENT_TYPES.CUP
+  const isSwiss = tournament.type === TOURNAMENT_TYPES.SWISS
   const champion = isCup ? getCupChampion(tournament.matches, tournament.participants) : null
+  const swissTotal =
+    tournament.swissRounds ?? defaultSwissRoundCount(tournament.participants.length)
+  const canNextSwiss = isManager && canGenerateNextSwissRound(tournament)
 
   function flash(text) {
     setMessage(text)
@@ -96,7 +108,23 @@ export default function TournamentDetailPage() {
 
   function handleGenerate() {
     const result = generateMatches(tournament.id)
-    flash(result.ok ? 'Kamper generert.' : result.error)
+    flash(
+      result.ok
+        ? isSwiss
+          ? 'Swiss runde 1 generert (sterk vs svak).'
+          : 'Kamper generert.'
+        : result.error,
+    )
+  }
+
+  function handleNextRound() {
+    const result = generateNextRound(tournament.id)
+    flash(result.ok ? 'Neste Swiss-runde generert.' : result.error)
+  }
+
+  function handleRankingChange(participantId, value) {
+    const result = setParticipantRanking(tournament.id, participantId, value)
+    if (!result.ok) flash(result.error)
   }
 
   function handleSaveScore(match) {
@@ -109,10 +137,7 @@ export default function TournamentDetailPage() {
   }
 
   const playableMatches = tournament.matches.filter(
-    (m) =>
-      !m.isBye &&
-      m.homeParticipantId &&
-      m.awayParticipantId,
+    (m) => !m.isBye && m.homeParticipantId && m.awayParticipantId,
   )
 
   return (
@@ -127,8 +152,11 @@ export default function TournamentDetailPage() {
             <TypeBadge type={tournament.type} />
             <StatusBadge status={tournament.status} />
             {tournament.maxParticipants && (
+              <span className="muted">Maks {tournament.maxParticipants} deltakere</span>
+            )}
+            {isSwiss && (
               <span className="muted">
-                Maks {tournament.maxParticipants} deltakere
+                Swiss {currentSwissRound(tournament.matches) || 0}/{swissTotal} runder
               </span>
             )}
           </div>
@@ -138,6 +166,13 @@ export default function TournamentDetailPage() {
       {champion && (
         <div className="callout callout-win">
           <strong>Vinner:</strong> {champion.name}
+        </div>
+      )}
+
+      {canEditRoster && (
+        <div className="callout">
+          <strong>Ranking:</strong> 3 = sterk, 1 = svak. I Swiss/cup møtes sterke lag ikke hverandre
+          i starten (sterk vs svak).
         </div>
       )}
 
@@ -196,11 +231,19 @@ export default function TournamentDetailPage() {
                 )}
                 {canGenerate && (
                   <button type="button" className="btn btn-primary" onClick={handleGenerate}>
-                    Generer kamper
+                    {isSwiss ? 'Generer runde 1' : 'Generer kamper'}
                   </button>
                 )}
               </div>
             </>
+          )}
+
+          {isManager && canNextSwiss && (
+            <div className="action-row">
+              <button type="button" className="btn btn-primary" onClick={handleNextRound}>
+                Generer neste Swiss-runde
+              </button>
+            </div>
           )}
 
           {tournament.participants.length === 0 ? (
@@ -208,30 +251,61 @@ export default function TournamentDetailPage() {
           ) : (
             <ul className="participant-list">
               {tournament.participants.map((p) => (
-                <li key={p.id}>
-                  <span>
+                <li key={p.id} className="participant-row">
+                  <span className="participant-info">
                     #{p.seed} {p.name}
                     {!p.userId && <em className="guest-tag"> gjest</em>}
+                    {!canEditRoster && (
+                      <em className="rank-tag">
+                        {' '}
+                        · rank {normalizeRanking(p.ranking)} ({rankingLabel(p.ranking)})
+                      </em>
+                    )}
                   </span>
-                  {isManager && canEditRoster && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => removeParticipant(tournament.id, p.id)}
-                    >
-                      Fjern
-                    </button>
-                  )}
+                  <span className="participant-actions">
+                    {isManager && canEditRoster ? (
+                      <label className="rank-select">
+                        <span className="sr-only">Ranking for {p.name}</span>
+                        <select
+                          value={normalizeRanking(p.ranking)}
+                          onChange={(e) => handleRankingChange(p.id, e.target.value)}
+                        >
+                          {RANKING_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    {isManager && canEditRoster && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => removeParticipant(tournament.id, p.id)}
+                      >
+                        Fjern
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
         </section>
 
-        {series && tournament.matches.length > 0 && (
-          <section className={`panel ${tournament.type === TOURNAMENT_TYPES.LEAGUE ? 'panel-highlight' : ''}`}>
-            <h2>{tournament.type === TOURNAMENT_TYPES.LEAGUE ? 'Tabell (hovedvisning)' : 'Tabell'}</h2>
-            <StandingsTable standings={standings} />
+        {showTable && (
+          <section
+            className={`panel ${
+              tournament.type === TOURNAMENT_TYPES.LEAGUE || isSwiss ? 'panel-highlight' : ''
+            }`}
+          >
+            <h2>
+              {tournament.type === TOURNAMENT_TYPES.LEAGUE || isSwiss
+                ? 'Tabell (hovedvisning)'
+                : 'Tabell'}
+            </h2>
+            <StandingsTable standings={standings} participants={tournament.participants} />
           </section>
         )}
 
@@ -250,7 +324,9 @@ export default function TournamentDetailPage() {
             )}
             {matchesByRound.map(([round, matches]) => {
               const label = matches[0]?.roundName ?? `Runde ${round}`
-              const visible = matches.filter((m) => playableMatches.some((p) => p.id === m.id) || m.isBye)
+              const visible = matches.filter(
+                (m) => playableMatches.some((p) => p.id === m.id) || m.isBye,
+              )
               if (!visible.length) return null
               return (
                 <div key={round} className="round-block">
@@ -321,7 +397,11 @@ export default function TournamentDetailPage() {
                             </div>
                           ) : (
                             <span className="muted">
-                              {done ? `${match.homeScore} — ${match.awayScore}` : ready ? 'Venter' : 'TBD'}
+                              {done
+                                ? `${match.homeScore} — ${match.awayScore}`
+                                : ready
+                                  ? 'Venter'
+                                  : 'TBD'}
                             </span>
                           )}
                         </li>

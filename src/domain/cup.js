@@ -23,6 +23,9 @@ function roundLabel(totalRounds, roundIndex) {
 /**
  * @returns {{ matches: object[], autoAdvances: Array<{matchId, winnerId}> }}
  */
+/**
+ * @param {string[]} participantIds — gjerne sortert sterkest først (ranking 3→1)
+ */
 export function generateCupBracket(participantIds) {
   const seeded = [...participantIds]
   if (seeded.length < 2) return { matches: [], autoAdvances: [] }

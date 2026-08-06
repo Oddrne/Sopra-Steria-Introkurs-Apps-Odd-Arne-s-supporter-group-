@@ -26,6 +26,14 @@ import {
   generateSeriesMatches,
   isSeriesComplete,
 } from '../domain/series.js'
+import { DEFAULT_RANKING, normalizeRanking, sortByRankingDesc } from '../domain/seeding.js'
+import {
+  canGenerateNextSwissRound,
+  defaultSwissRoundCount,
+  generateNextSwissRound,
+  generateSwissRoundOne,
+  isSwissComplete,
+} from '../domain/swiss.js'
 
 const AppContext = createContext(null)
 
@@ -77,11 +85,18 @@ export function AppProvider({ children }) {
     return { ok: true }
   }, [state.users])
 
-  const createTournament = useCallback(({ name, type, maxParticipants }) => {
+  const createTournament = useCallback(({ name, type, maxParticipants, swissRounds }) => {
     if (!state.currentUserId) return { ok: false, error: 'Du må være innlogget' }
     const max = maxParticipants ? Number(maxParticipants) : null
     if (max != null && (!Number.isInteger(max) || max < 2)) {
       return { ok: false, error: 'Maks deltakere må være et heltall ≥ 2' }
+    }
+    let rounds = null
+    if (type === TOURNAMENT_TYPES.SWISS) {
+      rounds = swissRounds ? Number(swissRounds) : null
+      if (rounds != null && (!Number.isInteger(rounds) || rounds < 1)) {
+        return { ok: false, error: 'Antall Swiss-runder må være et heltall ≥ 1' }
+      }
     }
     const tournament = {
       id: crypto.randomUUID(),
@@ -90,6 +105,7 @@ export function AppProvider({ children }) {
       status: TOURNAMENT_STATUSES.REGISTRATION,
       ownerId: state.currentUserId,
       maxParticipants: max,
+      swissRounds: rounds,
       participants: [],
       matches: [],
       createdAt: new Date().toISOString(),
@@ -141,6 +157,7 @@ export function AppProvider({ children }) {
               userId: user.id,
               name: user.name,
               seed: t.participants.length + 1,
+              ranking: DEFAULT_RANKING,
               status: 'registered',
             },
           ],
@@ -182,6 +199,7 @@ export function AppProvider({ children }) {
               userId: null,
               name: trimmed,
               seed: t.participants.length + 1,
+              ranking: DEFAULT_RANKING,
               status: 'registered',
             },
           ],
@@ -208,6 +226,32 @@ export function AppProvider({ children }) {
       }),
     }))
   }, [])
+
+  const setParticipantRanking = useCallback((tournamentId, participantId, ranking) => {
+    const normalized = normalizeRanking(ranking)
+    const tournament = state.tournaments.find((t) => t.id === tournamentId)
+    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (
+      tournament.status === TOURNAMENT_STATUSES.ACTIVE ||
+      tournament.status === TOURNAMENT_STATUSES.FINISHED
+    ) {
+      return { ok: false, error: 'Ranking kan ikke endres etter at kampene er generert' }
+    }
+
+    setState((s) => ({
+      ...s,
+      tournaments: s.tournaments.map((t) => {
+        if (t.id !== tournamentId) return t
+        return {
+          ...t,
+          participants: t.participants.map((p) =>
+            p.id === participantId ? { ...p, ranking: normalized } : p,
+          ),
+        }
+      }),
+    }))
+    return { ok: true }
+  }, [state.tournaments])
 
   const closeRegistration = useCallback((tournamentId) => {
     setState((s) => ({
@@ -247,11 +291,17 @@ export function AppProvider({ children }) {
     }
 
     let matches
+    let swissRounds = tournament.swissRounds
+
     if (isSeriesType(tournament.type)) {
       matches = generateSeriesMatches(tournament.participants.map((p) => p.id))
     } else if (tournament.type === TOURNAMENT_TYPES.CUP) {
-      const generated = generateCupBracket(tournament.participants.map((p) => p.id))
+      const orderedIds = sortByRankingDesc(tournament.participants).map((p) => p.id)
+      const generated = generateCupBracket(orderedIds)
       matches = applyAutoAdvances(generated.matches, generated.autoAdvances)
+    } else if (tournament.type === TOURNAMENT_TYPES.SWISS) {
+      swissRounds = swissRounds ?? defaultSwissRoundCount(tournament.participants.length)
+      matches = generateSwissRoundOne(tournament.participants)
     } else {
       return { ok: false, error: 'Ukjent turneringstype' }
     }
@@ -260,7 +310,37 @@ export function AppProvider({ children }) {
       ...s,
       tournaments: s.tournaments.map((t) =>
         t.id === tournamentId
-          ? { ...t, matches, status: TOURNAMENT_STATUSES.ACTIVE }
+          ? {
+              ...t,
+              matches,
+              swissRounds: t.type === TOURNAMENT_TYPES.SWISS ? swissRounds : t.swissRounds,
+              status: TOURNAMENT_STATUSES.ACTIVE,
+            }
+          : t,
+      ),
+    }))
+    return { ok: true }
+  }, [state.tournaments])
+
+  const generateNextRound = useCallback((tournamentId) => {
+    const tournament = state.tournaments.find((t) => t.id === tournamentId)
+    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (tournament.type !== TOURNAMENT_TYPES.SWISS) {
+      return { ok: false, error: 'Neste runde gjelder kun Swiss' }
+    }
+    if (!canGenerateNextSwissRound(tournament)) {
+      return {
+        ok: false,
+        error: 'Fullfør gjeldende runde, eller alle Swiss-runder er allerede generert',
+      }
+    }
+
+    const nextMatches = generateNextSwissRound(tournament.participants, tournament.matches)
+    setState((s) => ({
+      ...s,
+      tournaments: s.tournaments.map((t) =>
+        t.id === tournamentId
+          ? { ...t, matches: [...t.matches, ...nextMatches] }
           : t,
       ),
     }))
@@ -304,11 +384,15 @@ export function AppProvider({ children }) {
           matches = advanceWinner(matches, updated)
         }
 
+        const updatedTournament = { ...t, matches }
         let status = t.status
         if (isSeriesType(t.type) && isSeriesComplete(matches)) {
           status = TOURNAMENT_STATUSES.FINISHED
         }
         if (t.type === TOURNAMENT_TYPES.CUP && isCupComplete(matches)) {
+          status = TOURNAMENT_STATUSES.FINISHED
+        }
+        if (t.type === TOURNAMENT_TYPES.SWISS && isSwissComplete(updatedTournament)) {
           status = TOURNAMENT_STATUSES.FINISHED
         }
 
@@ -330,9 +414,11 @@ export function AppProvider({ children }) {
     joinTournament,
     addGuestParticipant,
     removeParticipant,
+    setParticipantRanking,
     closeRegistration,
     reopenRegistration,
     generateMatches,
+    generateNextRound,
     setMatchResult,
     canManageTournament: (tournament) => canManageTournament(tournament, currentUser),
   }

@@ -1,7 +1,13 @@
-export default function StandingsTable({ standings }) {
+import { normalizeRanking } from '../domain/seeding.js'
+
+export default function StandingsTable({ standings, participants = [] }) {
   if (!standings.length) {
     return <p className="muted">Ingen resultater ennå.</p>
   }
+
+  const rankingById = Object.fromEntries(
+    participants.map((p) => [p.id, normalizeRanking(p.ranking)]),
+  )
 
   return (
     <div className="table-wrap">
@@ -10,6 +16,7 @@ export default function StandingsTable({ standings }) {
           <tr>
             <th>#</th>
             <th>Lag</th>
+            <th>R</th>
             <th>K</th>
             <th>S</th>
             <th>U</th>
@@ -23,6 +30,7 @@ export default function StandingsTable({ standings }) {
             <tr key={row.participantId}>
               <td>{index + 1}</td>
               <td>{row.name}</td>
+              <td>{rankingById[row.participantId] ?? '–'}</td>
               <td>{row.played}</td>
               <td>{row.won}</td>
               <td>{row.drawn}</td>

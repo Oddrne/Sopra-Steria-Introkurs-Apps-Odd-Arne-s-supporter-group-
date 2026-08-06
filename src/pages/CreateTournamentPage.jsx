@@ -17,7 +17,12 @@ const TYPE_OPTIONS = [
   },
   {
     value: TOURNAMENT_TYPES.CUP,
-    description: 'Single elimination. Bracket; bye ved oddetall. Uavgjort ikke tillatt.',
+    description: 'Single elimination. Bracket seedes etter ranking (sterk vs svak tidlig).',
+  },
+  {
+    value: TOURNAMENT_TYPES.SWISS,
+    description:
+      'Swiss stage: runde 1 seedes (sterk vs svak). Senere runder parer lag med lignende poeng.',
   },
 ]
 
@@ -27,6 +32,7 @@ export default function CreateTournamentPage() {
   const [name, setName] = useState('')
   const [type, setType] = useState(TOURNAMENT_TYPES.ROUND_ROBIN)
   const [maxParticipants, setMaxParticipants] = useState('')
+  const [swissRounds, setSwissRounds] = useState('')
   const [error, setError] = useState('')
 
   function handleSubmit(event) {
@@ -36,6 +42,7 @@ export default function CreateTournamentPage() {
       name,
       type,
       maxParticipants: maxParticipants || null,
+      swissRounds: type === TOURNAMENT_TYPES.SWISS ? swissRounds || null : null,
     })
     if (!result.ok) {
       setError(result.error)
@@ -47,7 +54,9 @@ export default function CreateTournamentPage() {
   return (
     <section className="page narrow">
       <h1>Ny turnering</h1>
-      <p className="muted">Velg navn, format og eventuelt maks antall deltakere.</p>
+      <p className="muted">
+        Velg navn, format og eventuelt maks deltakere. Ranking (1–3) settes på lagene før start.
+      </p>
 
       <form className="form" onSubmit={handleSubmit}>
         <label>
@@ -90,6 +99,20 @@ export default function CreateTournamentPage() {
             </label>
           ))}
         </fieldset>
+
+        {type === TOURNAMENT_TYPES.SWISS && (
+          <label>
+            Antall Swiss-runder (valgfritt)
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={swissRounds}
+              onChange={(e) => setSwissRounds(e.target.value)}
+              placeholder="Auto (≈ log₂ av antall lag, minst 3)"
+            />
+          </label>
+        )}
 
         {error && <p className="form-error">{error}</p>}
 
