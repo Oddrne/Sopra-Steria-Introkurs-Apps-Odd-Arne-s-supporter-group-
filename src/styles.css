@@ -330,6 +330,108 @@ code {
   max-width: 640px;
 }
 
+.name-field {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.name-field input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.export-offscreen {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 720px;
+  pointer-events: none;
+}
+
+.export-card {
+  width: 720px;
+  padding: 1.5rem;
+  background:
+    radial-gradient(900px 400px at 10% -20%, rgba(200, 245, 66, 0.12), transparent 55%),
+    linear-gradient(160deg, #071a1f, #0d2c34 55%, #0a2228);
+  color: #e8f4f2;
+  border: 1px solid rgba(232, 244, 242, 0.12);
+  border-radius: 14px;
+  font-family: 'Source Sans 3', sans-serif;
+}
+
+.export-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.export-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.export-brand strong {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  font-weight: 400;
+}
+
+.export-brand em {
+  display: block;
+  font-style: normal;
+  color: #8fb0b8;
+  font-size: 0.85rem;
+}
+
+.export-title {
+  margin: 0 0 0.35rem;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.export-meta {
+  margin: 0 0 1rem;
+}
+
+.export-standings {
+  margin-top: 1rem;
+}
+
+.export-standings h3 {
+  margin-bottom: 0.5rem;
+}
+
+.export-cup-note {
+  margin-top: 0.75rem;
+  color: #8fb0b8;
+}
+
+.export-footer {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(232, 244, 242, 0.12);
+  color: #8fb0b8;
+  font-size: 0.85rem;
+}
+
+.export-card .winner-banner {
+  animation: none;
+}
+
+.export-card .trophy {
+  animation: none;
+}
+
 .muted {
   color: var(--muted);
 }

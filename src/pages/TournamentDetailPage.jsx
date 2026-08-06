@@ -44,6 +44,8 @@ export default function TournamentDetailPage() {
   const [guestName, setGuestName] = useState('')
   const [scoreDrafts, setScoreDrafts] = useState({})
   const [message, setMessage] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const exportRef = useRef(null)
 
   const participantById = useMemo(() => {
     if (!tournament) return {}
@@ -162,6 +164,26 @@ export default function TournamentDetailPage() {
     flash(result.ok ? `${result.saved} resultat(er) lagret.` : result.error)
   }
 
+  async function handleExportImage() {
+    if (!exportRef.current) return
+    setExporting(true)
+    try {
+      await exportElementAsPng(
+        exportRef.current,
+        `${slugifyFilename(tournament.name)}-resultat.png`,
+      )
+      flash('Bilde eksportert.')
+    } catch (err) {
+      flash(err?.message || 'Kunne ikke eksportere bilde.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const canExport =
+    tournament.matches.some((m) => m.status === MATCH_STATUSES.COMPLETED) ||
+    tournament.status === TOURNAMENT_STATUSES.FINISHED
+
   return (
     <section className="page">
       <div className="page-header">
@@ -183,7 +205,28 @@ export default function TournamentDetailPage() {
             )}
           </div>
         </div>
+        {canExport && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleExportImage}
+            disabled={exporting}
+          >
+            {exporting ? 'Eksporterer…' : 'Eksporter bilde'}
+          </button>
+        )}
       </div>
+
+      {canExport && (
+        <div className="export-offscreen" aria-hidden="true">
+          <ResultsExportCard
+            ref={exportRef}
+            tournament={tournament}
+            winner={winner}
+            standings={standings}
+          />
+        </div>
+      )}
 
       {winner && (
         <WinnerTrophy winner={winner} tournamentName={tournament.name} />
