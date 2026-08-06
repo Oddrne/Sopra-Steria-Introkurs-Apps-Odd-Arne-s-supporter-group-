@@ -1,4 +1,4 @@
-import { MATCH_STATUSES, TOURNAMENT_TYPES } from '../domain/constants.js'
+import { MATCH_STATUSES, TOURNAMENT_TYPES, normalizeTournamentType } from '../domain/constants.js'
 import { getMatchWinner } from '../domain/cup.js'
 import { computeStandings } from '../domain/series.js'
 
@@ -6,7 +6,7 @@ import { computeStandings } from '../domain/series.js'
 export function getTournamentWinner(tournament) {
   if (!tournament || tournament.status !== 'finished') return null
 
-  if (tournament.type === TOURNAMENT_TYPES.CUP) {
+  if (normalizeTournamentType(tournament.type) === TOURNAMENT_TYPES.CUP) {
     const final = tournament.matches.reduce(
       (best, m) => (!best || m.round > best.round ? m : best),
       null,

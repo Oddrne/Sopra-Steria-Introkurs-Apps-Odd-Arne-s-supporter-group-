@@ -5,15 +5,13 @@ import {
   TOURNAMENT_TYPE_LABELS,
   TOURNAMENT_TYPES,
 } from '../domain/constants.js'
+import { generateTournamentName } from '../domain/nameGenerator.js'
 
 const TYPE_OPTIONS = [
   {
     value: TOURNAMENT_TYPES.ROUND_ROBIN,
-    description: 'Alle møter alle én gang. Kampiste + tabell. Uavgjort tillatt.',
-  },
-  {
-    value: TOURNAMENT_TYPES.LEAGUE,
-    description: 'Samme kampgenerering som alle-mot-alle; hovedvisning er poengtabell (3/1/0).',
+    description:
+      'Alle møter alle én gang. Kampiste + poengtabell (3/1/0). Uavgjort tillatt.',
   },
   {
     value: TOURNAMENT_TYPES.CUP,
@@ -29,11 +27,24 @@ const TYPE_OPTIONS = [
 export default function CreateTournamentPage() {
   const { createTournament } = useApp()
   const navigate = useNavigate()
-  const [name, setName] = useState('')
   const [type, setType] = useState(TOURNAMENT_TYPES.ROUND_ROBIN)
+  const [name, setName] = useState(() => generateTournamentName(TOURNAMENT_TYPES.ROUND_ROBIN))
+  const [nameIsAuto, setNameIsAuto] = useState(true)
   const [maxParticipants, setMaxParticipants] = useState('')
   const [swissRounds, setSwissRounds] = useState('')
   const [error, setError] = useState('')
+
+  function handleTypeChange(nextType) {
+    setType(nextType)
+    if (nameIsAuto) {
+      setName(generateTournamentName(nextType))
+    }
+  }
+
+  function handleGenerateName() {
+    setName(generateTournamentName(type))
+    setNameIsAuto(true)
+  }
 
   function handleSubmit(event) {
     event.preventDefault()
@@ -61,12 +72,20 @@ export default function CreateTournamentPage() {
       <form className="form" onSubmit={handleSubmit}>
         <label>
           Navn
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="f.eks. Fredagscupen"
-            required
-          />
+          <div className="name-field">
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                setNameIsAuto(false)
+              }}
+              placeholder="f.eks. Fredagscupen"
+              required
+            />
+            <button type="button" className="btn btn-secondary" onClick={handleGenerateName}>
+              Generer navn
+            </button>
+          </div>
         </label>
 
         <label>
@@ -90,7 +109,7 @@ export default function CreateTournamentPage() {
                 name="type"
                 value={option.value}
                 checked={type === option.value}
-                onChange={() => setType(option.value)}
+                onChange={() => handleTypeChange(option.value)}
               />
               <span>
                 <strong>{TOURNAMENT_TYPE_LABELS[option.value]}</strong>

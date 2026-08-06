@@ -1,6 +1,6 @@
 # Sopra-Steria-Introkurs-Apps-Odd-Arne-s-supporter-group-
 
-Hobby-MVP for **Kjell Games AS**: opprett turneringer (alle-mot-alle, cup, liga), påmelding, generer kamper, registrer resultater, se tabell/bracket.
+Hobby-MVP for **Kjell Games AS**: opprett turneringer (alle-mot-alle, cup, Swiss), påmelding, generer kamper, registrer resultater, se tabell/bracket.
 
 ## Kom i gang
 
@@ -37,7 +37,7 @@ Nettlesar → React (Vite) → localStorage (JSON-blob)
 | Modul | Ansvar |
 |-------|--------|
 | `domain/seeding.js` | Ranking 1–3 (3 best); høy-vs-lav-paring |
-| `domain/series.js` | Alle-mot-alle + liga (samme generator, tabell 3/1/0) |
+| `domain/series.js` | Alle-mot-alle (serie): generator + tabell 3/1/0 |
 | `domain/cup.js` | Single elimination, bye, `nextMatchId` (seedet etter ranking) |
 | `domain/swiss.js` | Swiss stage: runde 1 seedet, senere poengbasert |
 | `domain/auth.js` | SHA-256 passord-hash (klient) |
@@ -55,7 +55,7 @@ Nettlesar → React (Vite) → localStorage (JSON-blob)
 
 - **Persistens:** én JSON-blob i `localStorage` (tilsvarer «én JSON-fil»; overlever refresh, ikke på tvers av nettlesere/enheter).
 - **Stack:** Vite + React + JS (ikke Next.js) for rask localhost-demo; `npm run build` → statiske filer (deploy til Netlify/Vercel/GitHub Pages).
-- **Serie:** én kamp per par; liga = samme generator, tabell som hovedvisning.
+- **Alle-mot-alle:** én kamp per par, kampiste + poengtabell (tidligere også kalt «liga»).
 - **Cup:** single elimination; uavgjort ikke tillatt; bye ved oddetall; seedet etter ranking.
 - **Swiss:** runde-for-runde; ranking styrer runde 1; senere poeng + unngå rematch.
 - **Resultater:** kun eier / admin / arrangør registrerer (ikke spiller-self-report).

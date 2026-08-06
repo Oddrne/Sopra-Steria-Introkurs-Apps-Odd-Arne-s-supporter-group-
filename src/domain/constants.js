@@ -1,19 +1,20 @@
 /**
- * Domene-konstanter — arkitekturspesifikasjon §6 / §10
+ * Domene-konstanter
+ * Serie = alle-mot-alle (tidligere også kalt «liga» — samme format).
  */
 
 export const TOURNAMENT_TYPES = {
   ROUND_ROBIN: 'round_robin',
   CUP: 'cup',
-  LEAGUE: 'league',
   SWISS: 'swiss',
 }
 
 export const TOURNAMENT_TYPE_LABELS = {
   round_robin: 'Alle-mot-alle',
   cup: 'Cup (knockout)',
-  league: 'Liga',
   swiss: 'Swiss',
+  // legacy (normaliseres til round_robin ved lasting)
+  league: 'Alle-mot-alle',
 }
 
 export const TOURNAMENT_STATUSES = {
@@ -41,12 +42,19 @@ export const USER_ROLES = {
   PLAYER: 'player',
 }
 
+/** Canonicaliser legacy «league» → round_robin */
+export function normalizeTournamentType(type) {
+  if (type === 'league') return TOURNAMENT_TYPES.ROUND_ROBIN
+  return type
+}
+
 export function isSeriesType(type) {
-  return type === TOURNAMENT_TYPES.ROUND_ROBIN || type === TOURNAMENT_TYPES.LEAGUE
+  return normalizeTournamentType(type) === TOURNAMENT_TYPES.ROUND_ROBIN
 }
 
 export function usesStandingsTable(type) {
-  return isSeriesType(type) || type === TOURNAMENT_TYPES.SWISS
+  const t = normalizeTournamentType(type)
+  return t === TOURNAMENT_TYPES.ROUND_ROBIN || t === TOURNAMENT_TYPES.SWISS
 }
 
 export function canOrganize(user) {

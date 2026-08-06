@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import StatusBadge, { TypeBadge } from '../components/StatusBadge.jsx'
 import StandingsTable from '../components/StandingsTable.jsx'
 import TournamentTree from '../components/TournamentTree.jsx'
 import WinnerTrophy from '../components/WinnerTrophy.jsx'
+import ResultsExportCard from '../components/ResultsExportCard.jsx'
 import {
   MATCH_STATUSES,
   TOURNAMENT_STATUSES,
@@ -19,6 +20,7 @@ import {
   defaultSwissRoundCount,
 } from '../domain/swiss.js'
 import { getTournamentWinner } from '../domain/winner.js'
+import { exportElementAsPng, slugifyFilename } from '../utils/exportImage.js'
 
 export default function TournamentDetailPage() {
   const { id } = useParams()
@@ -313,16 +315,8 @@ export default function TournamentDetailPage() {
         </section>
 
         {showTable && (
-          <section
-            className={`panel ${
-              tournament.type === TOURNAMENT_TYPES.LEAGUE || isSwiss ? 'panel-highlight' : ''
-            }`}
-          >
-            <h2>
-              {tournament.type === TOURNAMENT_TYPES.LEAGUE || isSwiss
-                ? 'Tabell (hovedvisning)'
-                : 'Tabell'}
-            </h2>
+          <section className="panel panel-highlight">
+            <h2>Tabell</h2>
             <StandingsTable standings={standings} participants={tournament.participants} />
           </section>
         )}

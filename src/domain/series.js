@@ -1,8 +1,8 @@
 import { MATCH_STATUSES } from './constants.js'
 
 /**
- * Serie-motor (alle-mot-alle + liga).
- * Default: én kamp per par. Poeng: 3/1/0.
+ * Serie-motor (alle-mot-alle).
+ * Én kamp per par. Poeng: 3/1/0.
  */
 
 export function generateSeriesMatches(participantIds) {
@@ -46,7 +46,7 @@ export function generateSeriesMatches(participantIds) {
   return matches
 }
 
-/** Poengtabell 3/1/0 — brukt av liga (hovedvisning) og alle-mot-alle. */
+/** Poengtabell 3/1/0 — alle-mot-alle og Swiss. */
 export function computeStandings(participants, matches) {
   const table = Object.fromEntries(
     participants.map((p) => [

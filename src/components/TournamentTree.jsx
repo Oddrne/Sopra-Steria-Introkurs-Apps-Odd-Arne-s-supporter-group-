@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { MATCH_STATUSES, TOURNAMENT_TYPES } from '../domain/constants.js'
+import { MATCH_STATUSES, TOURNAMENT_TYPES, normalizeTournamentType } from '../domain/constants.js'
 import { getMatchWinner } from '../domain/cup.js'
 
 /**
@@ -274,7 +274,7 @@ export default function TournamentTree({ tournament, participantById }) {
     return <p className="muted">Generer kamper for å se kampetreet.</p>
   }
 
-  const isCup = tournament.type === TOURNAMENT_TYPES.CUP
+  const isCup = normalizeTournamentType(tournament.type) === TOURNAMENT_TYPES.CUP
 
   return (
     <div className="tree-wrap">

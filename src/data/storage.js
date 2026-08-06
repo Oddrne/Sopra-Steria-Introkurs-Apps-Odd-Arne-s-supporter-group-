@@ -1,4 +1,5 @@
 import { DEMO_PASSWORD_HASH } from '../domain/auth.js'
+import { normalizeTournamentType } from '../domain/constants.js'
 
 const STORAGE_KEY = 'kjell-games-turnering-v2'
 
@@ -30,11 +31,17 @@ const defaultState = () => ({
   tournaments: [],
 })
 
+function migrateTournaments(tournaments) {
+  return (tournaments ?? []).map((t) => ({
+    ...t,
+    type: normalizeTournamentType(t.type),
+  }))
+}
+
 export function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      // Drop v1 (plain passwords) ved oppgradering
       localStorage.removeItem('kjell-games-turnering-v1')
       return defaultState()
     }
@@ -44,7 +51,7 @@ export function loadState() {
       ...defaults,
       ...parsed,
       users: parsed.users?.length ? parsed.users : defaults.users,
-      tournaments: parsed.tournaments ?? [],
+      tournaments: migrateTournaments(parsed.tournaments),
     }
   } catch {
     return defaultState()
@@ -57,7 +64,7 @@ export function saveState(state) {
     JSON.stringify({
       users: state.users,
       currentUserId: state.currentUserId,
-      tournaments: state.tournaments,
+      tournaments: migrateTournaments(state.tournaments),
     }),
   )
 }
