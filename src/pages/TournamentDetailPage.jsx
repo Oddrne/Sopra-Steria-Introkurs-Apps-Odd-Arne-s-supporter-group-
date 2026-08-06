@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import StatusBadge, { TypeBadge } from '../components/StatusBadge.jsx'
 import StandingsTable from '../components/StandingsTable.jsx'
-import CupBracket from '../components/CupBracket.jsx'
+import TournamentTree from '../components/TournamentTree.jsx'
+import WinnerTrophy from '../components/WinnerTrophy.jsx'
 import {
   MATCH_STATUSES,
   TOURNAMENT_STATUSES,
@@ -11,13 +12,13 @@ import {
   usesStandingsTable,
 } from '../domain/constants.js'
 import { computeStandings } from '../domain/series.js'
-import { getCupChampion } from '../domain/cup.js'
 import { RANKING_OPTIONS, normalizeRanking, rankingLabel } from '../domain/seeding.js'
 import {
   canGenerateNextSwissRound,
   currentSwissRound,
   defaultSwissRoundCount,
 } from '../domain/swiss.js'
+import { getTournamentWinner } from '../domain/winner.js'
 
 export default function TournamentDetailPage() {
   const { id } = useParams()
@@ -80,9 +81,8 @@ export default function TournamentDetailPage() {
   const canJoin = registrationOpen && currentUser && !alreadyJoined
   const canGenerate = isManager && canEditRoster && tournament.participants.length >= 2
   const showTable = usesStandingsTable(tournament.type) && tournament.matches.length > 0
-  const isCup = tournament.type === TOURNAMENT_TYPES.CUP
   const isSwiss = tournament.type === TOURNAMENT_TYPES.SWISS
-  const champion = isCup ? getCupChampion(tournament.matches, tournament.participants) : null
+  const winner = getTournamentWinner(tournament)
   const swissTotal =
     tournament.swissRounds ?? defaultSwissRoundCount(tournament.participants.length)
   const canNextSwiss = isManager && canGenerateNextSwissRound(tournament)
@@ -183,10 +183,8 @@ export default function TournamentDetailPage() {
         </div>
       </div>
 
-      {champion && (
-        <div className="callout callout-win">
-          <strong>Vinner:</strong> {champion.name}
-        </div>
+      {winner && (
+        <WinnerTrophy winner={winner} tournamentName={tournament.name} />
       )}
 
       {canEditRoster && (
@@ -329,10 +327,10 @@ export default function TournamentDetailPage() {
           </section>
         )}
 
-        {isCup && tournament.matches.length > 0 && (
+        {tournament.matches.length > 0 && (
           <section className="panel panel-wide">
-            <h2>Bracket</h2>
-            <CupBracket matches={tournament.matches} participantById={participantById} />
+            <h2>Kampetre</h2>
+            <TournamentTree tournament={tournament} participantById={participantById} />
           </section>
         )}
 
