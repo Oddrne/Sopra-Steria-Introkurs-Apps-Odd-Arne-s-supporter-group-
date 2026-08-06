@@ -501,14 +501,10 @@ code {
   color: #b8a0ff;
 }
 
-.badge-type-round_robin {
-  border-color: rgba(200, 245, 66, 0.4);
-}
-
+.badge-type-round_robin,
 .badge-type-cup,
 .badge-type-league {
-  border-color: rgba(255, 180, 84, 0.45);
-  color: var(--warn);
+  border-color: rgba(200, 245, 66, 0.4);
 }
 
 .detail-grid {
@@ -619,6 +615,88 @@ th {
 
 .round-block + .round-block {
   margin-top: 1.25rem;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.guest-tag,
+.bye-tag {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.85rem;
+}
+
+.panel-highlight {
+  border-color: rgba(200, 245, 66, 0.35);
+}
+
+.callout-win {
+  margin-bottom: 1rem;
+  border-color: rgba(200, 245, 66, 0.45);
+  color: var(--accent);
+}
+
+.bracket {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.bracket-round {
+  min-width: 200px;
+  flex: 0 0 auto;
+}
+
+.bracket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.bracket-match {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.bracket-match.is-done {
+  border-color: rgba(200, 245, 66, 0.3);
+}
+
+.bracket-slot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.bracket-slot:last-child {
+  border-bottom: none;
+}
+
+.bracket-slot.winner {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.bye-tag {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: var(--warn);
 }
 
 @keyframes fade-up {

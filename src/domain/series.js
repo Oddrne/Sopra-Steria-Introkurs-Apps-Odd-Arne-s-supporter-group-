@@ -1,10 +1,11 @@
 import { MATCH_STATUSES } from './constants.js'
 
 /**
- * Circle method for single round-robin (each pair plays once).
- * Returns matches with round numbers starting at 1.
+ * Serie-motor (alle-mot-alle + liga).
+ * Default: én kamp per par. Poeng: 3/1/0.
  */
-export function generateRoundRobinMatches(participantIds) {
+
+export function generateSeriesMatches(participantIds) {
   const ids = [...participantIds]
   if (ids.length < 2) return []
 
@@ -16,8 +17,6 @@ export function generateRoundRobinMatches(participantIds) {
   const half = n / 2
   const matches = []
   let matchNumber = 1
-
-  // Fix first player, rotate the rest
   const rotating = ids.slice(1)
 
   for (let round = 0; round < rounds; round += 1) {
@@ -36,21 +35,18 @@ export function generateRoundRobinMatches(participantIds) {
           awayScore: null,
           status: MATCH_STATUSES.PENDING,
           nextMatchId: null,
+          nextSlot: null,
         })
         matchNumber += 1
       }
     }
-    // Rotate clockwise
     rotating.unshift(rotating.pop())
   }
 
   return matches
 }
 
-/**
- * Compute standings: 3 pts win, 1 draw, 0 loss.
- * Sorted by points, then goal difference, then goals for, then name.
- */
+/** Poengtabell 3/1/0 — brukt av liga (hovedvisning) og alle-mot-alle. */
 export function computeStandings(participants, matches) {
   const table = Object.fromEntries(
     participants.map((p) => [
@@ -111,6 +107,6 @@ export function computeStandings(participants, matches) {
   })
 }
 
-export function isTournamentComplete(matches) {
+export function isSeriesComplete(matches) {
   return matches.length > 0 && matches.every((m) => m.status === MATCH_STATUSES.COMPLETED)
 }

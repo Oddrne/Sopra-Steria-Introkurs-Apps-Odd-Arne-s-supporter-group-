@@ -10,36 +10,43 @@ export default function LoginPage() {
   const [email, setEmail] = useState('kjell@kjellgames.no')
   const [password, setPassword] = useState('demo')
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   if (currentUser) return <Navigate to="/tournaments" replace />
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     setError('')
-    const result =
-      mode === 'login'
-        ? login(email, password)
-        : register(name, email, password)
+    setBusy(true)
+    try {
+      const result =
+        mode === 'login'
+          ? await login(email, password)
+          : await register(name, email, password)
 
-    if (!result.ok) {
-      setError(result.error)
-      return
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      navigate('/tournaments')
+    } finally {
+      setBusy(false)
     }
-    navigate('/tournaments')
   }
 
   return (
     <section className="auth-panel">
       <h1>{mode === 'login' ? 'Logg inn' : 'Registrer deg'}</h1>
       <p className="muted">
-        Demo-brukere: <code>kjell@kjellgames.no</code> / <code>demo</code> (admin) eller{' '}
-        <code>anna@kjellgames.no</code> / <code>demo</code>.
+        Demo: <code>kjell@kjellgames.no</code> / <code>demo</code> (admin),{' '}
+        <code>anna@kjellgames.no</code> (arrangør), <code>per@example.com</code> (spiller) — alle
+        med passord <code>demo</code>.
       </p>
 
       <form className="form" onSubmit={handleSubmit}>
         {mode === 'register' && (
           <label>
-            Navn
+            Visningsnavn
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -71,8 +78,8 @@ export default function LoginPage() {
 
         {error && <p className="form-error">{error}</p>}
 
-        <button type="submit" className="btn btn-primary">
-          {mode === 'login' ? 'Logg inn' : 'Opprett konto'}
+        <button type="submit" className="btn btn-primary" disabled={busy}>
+          {busy ? 'Vent…' : mode === 'login' ? 'Logg inn' : 'Opprett konto'}
         </button>
       </form>
 

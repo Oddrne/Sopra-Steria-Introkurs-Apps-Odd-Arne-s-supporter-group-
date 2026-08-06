@@ -3,14 +3,14 @@ import { useApp } from '../context/AppContext.jsx'
 import StatusBadge, { TypeBadge } from '../components/StatusBadge.jsx'
 
 export default function TournamentListPage() {
-  const { tournaments, currentUser, deleteTournament } = useApp()
+  const { tournaments, currentUser, deleteTournament, canManageTournament } = useApp()
 
   return (
     <section className="page">
       <div className="page-header">
         <div>
           <h1>Turneringer</h1>
-          <p className="muted">Hei, {currentUser?.name}. Opprett og følg turneringene dine.</p>
+          <p className="muted">Hei, {currentUser?.name}. Se, meld deg på, eller opprett turneringer.</p>
         </div>
         <Link className="btn btn-primary" to="/tournaments/new">
           Ny turnering
@@ -36,7 +36,8 @@ export default function TournamentListPage() {
                   <TypeBadge type={t.type} />
                   <StatusBadge status={t.status} />
                   <span className="muted">
-                    {t.participants.length} deltakere · {t.matches.length} kamper
+                    {t.participants.length} deltakere
+                    {t.matches.length ? ` · ${t.matches.length} kamper` : ''}
                   </span>
                 </div>
               </div>
@@ -44,15 +45,17 @@ export default function TournamentListPage() {
                 <Link className="btn btn-secondary" to={`/tournaments/${t.id}`}>
                   Åpne
                 </Link>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    if (window.confirm(`Slette «${t.name}»?`)) deleteTournament(t.id)
-                  }}
-                >
-                  Slett
-                </button>
+                {canManageTournament(t) && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      if (window.confirm(`Slette «${t.name}»?`)) deleteTournament(t.id)
+                    }}
+                  >
+                    Slett
+                  </button>
+                )}
               </div>
             </li>
           ))}

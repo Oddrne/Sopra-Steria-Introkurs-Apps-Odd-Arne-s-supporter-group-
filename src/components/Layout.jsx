@@ -36,7 +36,7 @@ export default function Layout() {
       </main>
 
       <footer className="footer">
-        MVP for Kjell Games AS — alle-mot-alle fullt støttet; cup og liga som skisser.
+        Kjell Games MVP — alle-mot-alle, liga og cup. Data lagres lokalt i nettleseren.
       </footer>
     </div>
   )

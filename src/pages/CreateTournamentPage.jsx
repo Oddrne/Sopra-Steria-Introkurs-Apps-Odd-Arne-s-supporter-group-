@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import {
-  FULLY_SUPPORTED_TYPES,
   TOURNAMENT_TYPE_LABELS,
   TOURNAMENT_TYPES,
 } from '../domain/constants.js'
@@ -10,15 +9,15 @@ import {
 const TYPE_OPTIONS = [
   {
     value: TOURNAMENT_TYPES.ROUND_ROBIN,
-    description: 'Alle møter alle én gang. Resultater oppdaterer tabellen. Fullt støttet i MVP.',
-  },
-  {
-    value: TOURNAMENT_TYPES.CUP,
-    description: 'Knockout med bracket. Skisse i målarkitekturen — ikke spillbart i denne MVP-en.',
+    description: 'Alle møter alle én gang. Kampiste + tabell. Uavgjort tillatt.',
   },
   {
     value: TOURNAMENT_TYPES.LEAGUE,
-    description: 'Sesong med flere runder over tid. Skisse — ikke spillbart i denne MVP-en.',
+    description: 'Samme kampgenerering som alle-mot-alle; hovedvisning er poengtabell (3/1/0).',
+  },
+  {
+    value: TOURNAMENT_TYPES.CUP,
+    description: 'Single elimination. Bracket; bye ved oddetall. Uavgjort ikke tillatt.',
   },
 ]
 
@@ -27,12 +26,17 @@ export default function CreateTournamentPage() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [type, setType] = useState(TOURNAMENT_TYPES.ROUND_ROBIN)
+  const [maxParticipants, setMaxParticipants] = useState('')
   const [error, setError] = useState('')
 
   function handleSubmit(event) {
     event.preventDefault()
     setError('')
-    const result = createTournament({ name, type })
+    const result = createTournament({
+      name,
+      type,
+      maxParticipants: maxParticipants || null,
+    })
     if (!result.ok) {
       setError(result.error)
       return
@@ -43,10 +47,7 @@ export default function CreateTournamentPage() {
   return (
     <section className="page narrow">
       <h1>Ny turnering</h1>
-      <p className="muted">
-        Velg navn og format. Alle-mot-alle er det eneste formatet som er fullt spillbart i 2-timers
-        MVP-en.
-      </p>
+      <p className="muted">Velg navn, format og eventuelt maks antall deltakere.</p>
 
       <form className="form" onSubmit={handleSubmit}>
         <label>
@@ -59,29 +60,35 @@ export default function CreateTournamentPage() {
           />
         </label>
 
+        <label>
+          Maks deltakere (valgfritt)
+          <input
+            type="number"
+            min="2"
+            step="1"
+            value={maxParticipants}
+            onChange={(e) => setMaxParticipants(e.target.value)}
+            placeholder="Ubegrenset"
+          />
+        </label>
+
         <fieldset className="type-picker">
           <legend>Format</legend>
-          {TYPE_OPTIONS.map((option) => {
-            const supported = FULLY_SUPPORTED_TYPES.includes(option.value)
-            return (
-              <label key={option.value} className={`type-option ${supported ? '' : 'is-stub'}`}>
-                <input
-                  type="radio"
-                  name="type"
-                  value={option.value}
-                  checked={type === option.value}
-                  onChange={() => setType(option.value)}
-                />
-                <span>
-                  <strong>
-                    {TOURNAMENT_TYPE_LABELS[option.value]}
-                    {!supported && <em className="stub-tag"> skisse</em>}
-                  </strong>
-                  <small>{option.description}</small>
-                </span>
-              </label>
-            )
-          })}
+          {TYPE_OPTIONS.map((option) => (
+            <label key={option.value} className="type-option">
+              <input
+                type="radio"
+                name="type"
+                value={option.value}
+                checked={type === option.value}
+                onChange={() => setType(option.value)}
+              />
+              <span>
+                <strong>{TOURNAMENT_TYPE_LABELS[option.value]}</strong>
+                <small>{option.description}</small>
+              </span>
+            </label>
+          ))}
         </fieldset>
 
         {error && <p className="form-error">{error}</p>}

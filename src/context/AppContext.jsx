@@ -7,16 +7,25 @@ import {
   useState,
 } from 'react'
 import { loadState, saveState } from '../data/storage.js'
+import { hashPassword, verifyPassword } from '../domain/auth.js'
 import {
   MATCH_STATUSES,
   TOURNAMENT_STATUSES,
   TOURNAMENT_TYPES,
-  FULLY_SUPPORTED_TYPES,
+  USER_ROLES,
+  canManageTournament,
+  isSeriesType,
 } from '../domain/constants.js'
 import {
-  generateRoundRobinMatches,
-  isTournamentComplete,
-} from '../domain/roundRobin.js'
+  advanceWinner,
+  applyAutoAdvances,
+  generateCupBracket,
+  isCupComplete,
+} from '../domain/cup.js'
+import {
+  generateSeriesMatches,
+  isSeriesComplete,
+} from '../domain/series.js'
 
 const AppContext = createContext(null)
 
@@ -32,11 +41,11 @@ export function AppProvider({ children }) {
     [state.users, state.currentUserId],
   )
 
-  const login = useCallback((email, password) => {
-    const user = state.users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password,
-    )
-    if (!user) return { ok: false, error: 'Feil e-post eller passord' }
+  const login = useCallback(async (email, password) => {
+    const user = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase())
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      return { ok: false, error: 'Feil e-post eller passord' }
+    }
     setState((s) => ({ ...s, currentUserId: user.id }))
     return { ok: true }
   }, [state.users])
@@ -45,16 +54,20 @@ export function AppProvider({ children }) {
     setState((s) => ({ ...s, currentUserId: null }))
   }, [])
 
-  const register = useCallback((name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     if (state.users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
       return { ok: false, error: 'E-post er allerede i bruk' }
     }
+    if (!name.trim() || password.length < 3) {
+      return { ok: false, error: 'Navn og passord (min. 3 tegn) kreves' }
+    }
+    const passwordHash = await hashPassword(password)
     const user = {
       id: crypto.randomUUID(),
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      password,
-      role: 'player',
+      passwordHash,
+      role: USER_ROLES.PLAYER,
     }
     setState((s) => ({
       ...s,
@@ -64,31 +77,26 @@ export function AppProvider({ children }) {
     return { ok: true }
   }, [state.users])
 
-  const createTournament = useCallback(({ name, type }) => {
+  const createTournament = useCallback(({ name, type, maxParticipants }) => {
     if (!state.currentUserId) return { ok: false, error: 'Du må være innlogget' }
+    const max = maxParticipants ? Number(maxParticipants) : null
+    if (max != null && (!Number.isInteger(max) || max < 2)) {
+      return { ok: false, error: 'Maks deltakere må være et heltall ≥ 2' }
+    }
     const tournament = {
       id: crypto.randomUUID(),
       name: name.trim(),
       type,
-      status: TOURNAMENT_STATUSES.DRAFT,
+      status: TOURNAMENT_STATUSES.REGISTRATION,
       ownerId: state.currentUserId,
+      maxParticipants: max,
       participants: [],
       matches: [],
       createdAt: new Date().toISOString(),
-      stubNote: !FULLY_SUPPORTED_TYPES.includes(type)
-        ? 'Dette formatet er skissert i målarkitekturen, men ikke fullt spilt ut i 2-timers MVP.'
-        : null,
     }
     setState((s) => ({ ...s, tournaments: [tournament, ...s.tournaments] }))
     return { ok: true, tournament }
   }, [state.currentUserId])
-
-  const updateTournament = useCallback((id, patch) => {
-    setState((s) => ({
-      ...s,
-      tournaments: s.tournaments.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-    }))
-  }, [])
 
   const deleteTournament = useCallback((id) => {
     setState((s) => ({
@@ -97,35 +105,91 @@ export function AppProvider({ children }) {
     }))
   }, [])
 
-  const addParticipant = useCallback((tournamentId, name) => {
-    const trimmed = name.trim()
-    if (!trimmed) return { ok: false, error: 'Navn kreves' }
+  const joinTournament = useCallback((tournamentId) => {
+    const user = state.users.find((u) => u.id === state.currentUserId)
+    if (!user) return { ok: false, error: 'Du må være innlogget' }
+
+    const tournament = state.tournaments.find((t) => t.id === tournamentId)
+    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (
+      tournament.status !== TOURNAMENT_STATUSES.REGISTRATION &&
+      tournament.status !== TOURNAMENT_STATUSES.DRAFT
+    ) {
+      return { ok: false, error: 'Påmelding er stengt' }
+    }
+    if (tournament.status === TOURNAMENT_STATUSES.DRAFT) {
+      return { ok: false, error: 'Påmelding er stengt' }
+    }
+    if (tournament.participants.some((p) => p.userId === user.id)) {
+      return { ok: false, error: 'Du er allerede påmeldt' }
+    }
+    if (tournament.maxParticipants && tournament.participants.length >= tournament.maxParticipants) {
+      return { ok: false, error: 'Turneringen er full' }
+    }
 
     setState((s) => ({
       ...s,
       tournaments: s.tournaments.map((t) => {
         if (t.id !== tournamentId) return t
-        if (t.status === TOURNAMENT_STATUSES.ACTIVE || t.status === TOURNAMENT_STATUSES.FINISHED) {
-          return t
-        }
-        if (t.participants.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
-          return t
-        }
         return {
           ...t,
-          status:
-            t.status === TOURNAMENT_STATUSES.DRAFT
-              ? TOURNAMENT_STATUSES.REGISTRATION
-              : t.status,
+          status: TOURNAMENT_STATUSES.REGISTRATION,
           participants: [
             ...t.participants,
-            { id: crypto.randomUUID(), name: trimmed, seed: t.participants.length + 1 },
+            {
+              id: crypto.randomUUID(),
+              userId: user.id,
+              name: user.name,
+              seed: t.participants.length + 1,
+              status: 'registered',
+            },
           ],
         }
       }),
     }))
     return { ok: true }
-  }, [])
+  }, [state.currentUserId, state.users, state.tournaments])
+
+  const addGuestParticipant = useCallback((tournamentId, name) => {
+    const trimmed = name.trim()
+    if (!trimmed) return { ok: false, error: 'Navn kreves' }
+
+    const tournament = state.tournaments.find((t) => t.id === tournamentId)
+    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (
+      tournament.status === TOURNAMENT_STATUSES.ACTIVE ||
+      tournament.status === TOURNAMENT_STATUSES.FINISHED
+    ) {
+      return { ok: false, error: 'Kan ikke legge til etter start' }
+    }
+    if (tournament.participants.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      return { ok: false, error: 'Navnet er allerede med' }
+    }
+    if (tournament.maxParticipants && tournament.participants.length >= tournament.maxParticipants) {
+      return { ok: false, error: 'Turneringen er full' }
+    }
+
+    setState((s) => ({
+      ...s,
+      tournaments: s.tournaments.map((t) => {
+        if (t.id !== tournamentId) return t
+        return {
+          ...t,
+          participants: [
+            ...t.participants,
+            {
+              id: crypto.randomUUID(),
+              userId: null,
+              name: trimmed,
+              seed: t.participants.length + 1,
+              status: 'registered',
+            },
+          ],
+        }
+      }),
+    }))
+    return { ok: true }
+  }, [state.tournaments])
 
   const removeParticipant = useCallback((tournamentId, participantId) => {
     setState((s) => ({
@@ -137,31 +201,71 @@ export function AppProvider({ children }) {
         }
         return {
           ...t,
-          participants: t.participants.filter((p) => p.id !== participantId),
+          participants: t.participants
+            .filter((p) => p.id !== participantId)
+            .map((p, i) => ({ ...p, seed: i + 1 })),
         }
       }),
     }))
   }, [])
 
-  const startTournament = useCallback((tournamentId) => {
+  const closeRegistration = useCallback((tournamentId) => {
     setState((s) => ({
       ...s,
       tournaments: s.tournaments.map((t) => {
         if (t.id !== tournamentId) return t
-        if (t.type !== TOURNAMENT_TYPES.ROUND_ROBIN) {
+        if (t.status !== TOURNAMENT_STATUSES.REGISTRATION && t.status !== TOURNAMENT_STATUSES.DRAFT) {
           return t
         }
-        if (t.participants.length < 2) return t
-
-        const matches = generateRoundRobinMatches(t.participants.map((p) => p.id))
-        return {
-          ...t,
-          matches,
-          status: TOURNAMENT_STATUSES.ACTIVE,
-        }
+        return { ...t, status: TOURNAMENT_STATUSES.DRAFT }
       }),
     }))
   }, [])
+
+  const reopenRegistration = useCallback((tournamentId) => {
+    setState((s) => ({
+      ...s,
+      tournaments: s.tournaments.map((t) => {
+        if (t.id !== tournamentId) return t
+        if (t.status !== TOURNAMENT_STATUSES.DRAFT) return t
+        return { ...t, status: TOURNAMENT_STATUSES.REGISTRATION }
+      }),
+    }))
+  }, [])
+
+  const generateMatches = useCallback((tournamentId) => {
+    const tournament = state.tournaments.find((t) => t.id === tournamentId)
+    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    if (tournament.participants.length < 2) {
+      return { ok: false, error: 'Minst 2 deltakere kreves' }
+    }
+    if (
+      tournament.status === TOURNAMENT_STATUSES.ACTIVE ||
+      tournament.status === TOURNAMENT_STATUSES.FINISHED
+    ) {
+      return { ok: false, error: 'Kampene er allerede generert' }
+    }
+
+    let matches
+    if (isSeriesType(tournament.type)) {
+      matches = generateSeriesMatches(tournament.participants.map((p) => p.id))
+    } else if (tournament.type === TOURNAMENT_TYPES.CUP) {
+      const generated = generateCupBracket(tournament.participants.map((p) => p.id))
+      matches = applyAutoAdvances(generated.matches, generated.autoAdvances)
+    } else {
+      return { ok: false, error: 'Ukjent turneringstype' }
+    }
+
+    setState((s) => ({
+      ...s,
+      tournaments: s.tournaments.map((t) =>
+        t.id === tournamentId
+          ? { ...t, matches, status: TOURNAMENT_STATUSES.ACTIVE }
+          : t,
+      ),
+    }))
+    return { ok: true }
+  }, [state.tournaments])
 
   const setMatchResult = useCallback((tournamentId, matchId, homeScore, awayScore) => {
     const hs = Number(homeScore)
@@ -170,28 +274,49 @@ export function AppProvider({ children }) {
       return { ok: false, error: 'Poeng må være hele tall ≥ 0' }
     }
 
+    const tournament = state.tournaments.find((t) => t.id === tournamentId)
+    if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
+    const match = tournament.matches.find((m) => m.id === matchId)
+    if (!match) return { ok: false, error: 'Kamp ikke funnet' }
+    if (tournament.type === TOURNAMENT_TYPES.CUP && hs === as) {
+      return { ok: false, error: 'Cup krever en vinner — uavgjort er ikke tillatt' }
+    }
+
     setState((s) => ({
       ...s,
       tournaments: s.tournaments.map((t) => {
         if (t.id !== tournamentId) return t
-        const matches = t.matches.map((m) =>
+
+        let matches = t.matches.map((m) =>
           m.id === matchId
             ? {
                 ...m,
                 homeScore: hs,
                 awayScore: as,
                 status: MATCH_STATUSES.COMPLETED,
+                isBye: false,
               }
             : m,
         )
-        const status = isTournamentComplete(matches)
-          ? TOURNAMENT_STATUSES.FINISHED
-          : t.status
+
+        if (t.type === TOURNAMENT_TYPES.CUP) {
+          const updated = matches.find((m) => m.id === matchId)
+          matches = advanceWinner(matches, updated)
+        }
+
+        let status = t.status
+        if (isSeriesType(t.type) && isSeriesComplete(matches)) {
+          status = TOURNAMENT_STATUSES.FINISHED
+        }
+        if (t.type === TOURNAMENT_TYPES.CUP && isCupComplete(matches)) {
+          status = TOURNAMENT_STATUSES.FINISHED
+        }
+
         return { ...t, matches, status }
       }),
     }))
     return { ok: true }
-  }, [])
+  }, [state.tournaments])
 
   const value = {
     users: state.users,
@@ -201,12 +326,15 @@ export function AppProvider({ children }) {
     logout,
     register,
     createTournament,
-    updateTournament,
     deleteTournament,
-    addParticipant,
+    joinTournament,
+    addGuestParticipant,
     removeParticipant,
-    startTournament,
+    closeRegistration,
+    reopenRegistration,
+    generateMatches,
     setMatchResult,
+    canManageTournament: (tournament) => canManageTournament(tournament, currentUser),
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

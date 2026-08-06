@@ -1,7 +1,5 @@
 /**
- * Domain constants — mirrors arkitekturspesifikasjonen
- * Tournament.type: round_robin | cup | league
- * Tournament.status: draft | registration | active | finished
+ * Domene-konstanter — arkitekturspesifikasjon §6 / §10
  */
 
 export const TOURNAMENT_TYPES = {
@@ -24,8 +22,8 @@ export const TOURNAMENT_STATUSES = {
 }
 
 export const TOURNAMENT_STATUS_LABELS = {
-  draft: 'Utkast',
-  registration: 'Påmelding',
+  draft: 'Påmelding stengt',
+  registration: 'Påmelding åpen',
   active: 'Pågår',
   finished: 'Avsluttet',
 }
@@ -41,8 +39,19 @@ export const USER_ROLES = {
   PLAYER: 'player',
 }
 
-/** Formats fully playable in this MVP */
-export const FULLY_SUPPORTED_TYPES = [TOURNAMENT_TYPES.ROUND_ROBIN]
+export function isSeriesType(type) {
+  return type === TOURNAMENT_TYPES.ROUND_ROBIN || type === TOURNAMENT_TYPES.LEAGUE
+}
 
-/** Formats selectable but stubbed */
-export const STUB_TYPES = [TOURNAMENT_TYPES.CUP, TOURNAMENT_TYPES.LEAGUE]
+export function canOrganize(user) {
+  if (!user) return false
+  return user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.ORGANIZER
+}
+
+export function isTournamentOwner(tournament, user) {
+  return Boolean(user && tournament && tournament.ownerId === user.id)
+}
+
+export function canManageTournament(tournament, user) {
+  return canOrganize(user) || isTournamentOwner(tournament, user)
+}

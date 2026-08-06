@@ -2,25 +2,34 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
 import StatusBadge, { TypeBadge } from '../components/StatusBadge.jsx'
+import StandingsTable from '../components/StandingsTable.jsx'
+import CupBracket from '../components/CupBracket.jsx'
 import {
   MATCH_STATUSES,
   TOURNAMENT_STATUSES,
   TOURNAMENT_TYPES,
+  isSeriesType,
 } from '../domain/constants.js'
-import { computeStandings } from '../domain/roundRobin.js'
+import { computeStandings } from '../domain/series.js'
+import { getCupChampion } from '../domain/cup.js'
 
 export default function TournamentDetailPage() {
   const { id } = useParams()
   const {
     tournaments,
-    addParticipant,
+    currentUser,
+    joinTournament,
+    addGuestParticipant,
     removeParticipant,
-    startTournament,
+    closeRegistration,
+    reopenRegistration,
+    generateMatches,
     setMatchResult,
+    canManageTournament,
   } = useApp()
-  const tournament = tournaments.find((t) => t.id === id)
 
-  const [participantName, setParticipantName] = useState('')
+  const tournament = tournaments.find((t) => t.id === id)
+  const [guestName, setGuestName] = useState('')
   const [scoreDrafts, setScoreDrafts] = useState({})
   const [message, setMessage] = useState('')
 
@@ -30,7 +39,7 @@ export default function TournamentDetailPage() {
   }, [tournament])
 
   const standings = useMemo(() => {
-    if (!tournament || tournament.type !== TOURNAMENT_TYPES.ROUND_ROBIN) return []
+    if (!tournament || !isSeriesType(tournament.type)) return []
     return computeStandings(tournament.participants, tournament.matches)
   }, [tournament])
 
@@ -53,30 +62,41 @@ export default function TournamentDetailPage() {
     )
   }
 
-  const canEditParticipants =
-    tournament.status === TOURNAMENT_STATUSES.DRAFT ||
-    tournament.status === TOURNAMENT_STATUSES.REGISTRATION
+  const isManager = canManageTournament(tournament)
+  const registrationOpen = tournament.status === TOURNAMENT_STATUSES.REGISTRATION
+  const canEditRoster =
+    tournament.status === TOURNAMENT_STATUSES.REGISTRATION ||
+    tournament.status === TOURNAMENT_STATUSES.DRAFT
+  const alreadyJoined = tournament.participants.some((p) => p.userId === currentUser?.id)
+  const canJoin = registrationOpen && currentUser && !alreadyJoined
+  const canGenerate = isManager && canEditRoster && tournament.participants.length >= 2
+  const series = isSeriesType(tournament.type)
+  const isCup = tournament.type === TOURNAMENT_TYPES.CUP
+  const champion = isCup ? getCupChampion(tournament.matches, tournament.participants) : null
 
-  const isRoundRobin = tournament.type === TOURNAMENT_TYPES.ROUND_ROBIN
-  const canStart =
-    isRoundRobin &&
-    canEditParticipants &&
-    tournament.participants.length >= 2
-
-  function handleAddParticipant(event) {
-    event.preventDefault()
-    const result = addParticipant(tournament.id, participantName)
-    if (!result.ok) {
-      setMessage(result.error)
-      return
-    }
-    setParticipantName('')
-    setMessage('')
+  function flash(text) {
+    setMessage(text)
   }
 
-  function handleStart() {
-    startTournament(tournament.id)
-    setMessage('Kampene er generert. Registrer resultater under.')
+  function handleJoin() {
+    const result = joinTournament(tournament.id)
+    flash(result.ok ? 'Du er påmeldt!' : result.error)
+  }
+
+  function handleAddGuest(event) {
+    event.preventDefault()
+    const result = addGuestParticipant(tournament.id, guestName)
+    if (!result.ok) {
+      flash(result.error)
+      return
+    }
+    setGuestName('')
+    flash('Deltaker lagt til.')
+  }
+
+  function handleGenerate() {
+    const result = generateMatches(tournament.id)
+    flash(result.ok ? 'Kamper generert.' : result.error)
   }
 
   function handleSaveScore(match) {
@@ -85,12 +105,15 @@ export default function TournamentDetailPage() {
       away: match.awayScore ?? '',
     }
     const result = setMatchResult(tournament.id, match.id, draft.home, draft.away)
-    if (!result.ok) {
-      setMessage(result.error)
-      return
-    }
-    setMessage('Resultat lagret.')
+    flash(result.ok ? 'Resultat lagret.' : result.error)
   }
+
+  const playableMatches = tournament.matches.filter(
+    (m) =>
+      !m.isBye &&
+      m.homeParticipantId &&
+      m.awayParticipantId,
+  )
 
   return (
     <section className="page">
@@ -103,14 +126,18 @@ export default function TournamentDetailPage() {
           <div className="tournament-meta">
             <TypeBadge type={tournament.type} />
             <StatusBadge status={tournament.status} />
+            {tournament.maxParticipants && (
+              <span className="muted">
+                Maks {tournament.maxParticipants} deltakere
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {tournament.stubNote && (
-        <div className="callout callout-stub">
-          <strong>Skisse-format.</strong> {tournament.stubNote} Du kan legge til deltakere, men
-          kampgenerering er kun implementert for alle-mot-alle.
+      {champion && (
+        <div className="callout callout-win">
+          <strong>Vinner:</strong> {champion.name}
         </div>
       )}
 
@@ -118,18 +145,62 @@ export default function TournamentDetailPage() {
 
       <div className="detail-grid">
         <section className="panel">
-          <h2>Deltakere</h2>
-          {canEditParticipants && (
-            <form className="inline-form" onSubmit={handleAddParticipant}>
-              <input
-                value={participantName}
-                onChange={(e) => setParticipantName(e.target.value)}
-                placeholder="Navn på deltaker"
-              />
-              <button type="submit" className="btn btn-secondary">
-                Legg til
-              </button>
-            </form>
+          <h2>Påmelding & deltakere</h2>
+
+          {canJoin && (
+            <button type="button" className="btn btn-primary" onClick={handleJoin}>
+              Meld meg på
+            </button>
+          )}
+          {alreadyJoined && <p className="muted">Du er påmeldt.</p>}
+          {!registrationOpen && canEditRoster && (
+            <p className="muted">Påmelding er stengt.</p>
+          )}
+
+          {isManager && canEditRoster && (
+            <>
+              <form className="inline-form" onSubmit={handleAddGuest}>
+                <input
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Legg til gjest (navn)"
+                />
+                <button type="submit" className="btn btn-secondary">
+                  Legg til
+                </button>
+              </form>
+
+              <div className="action-row">
+                {registrationOpen ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      closeRegistration(tournament.id)
+                      flash('Påmelding stengt.')
+                    }}
+                  >
+                    Steng påmelding
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      reopenRegistration(tournament.id)
+                      flash('Påmelding åpnet.')
+                    }}
+                  >
+                    Åpne påmelding
+                  </button>
+                )}
+                {canGenerate && (
+                  <button type="button" className="btn btn-primary" onClick={handleGenerate}>
+                    Generer kamper
+                  </button>
+                )}
+              </div>
+            </>
           )}
 
           {tournament.participants.length === 0 ? (
@@ -140,8 +211,9 @@ export default function TournamentDetailPage() {
                 <li key={p.id}>
                   <span>
                     #{p.seed} {p.name}
+                    {!p.userId && <em className="guest-tag"> gjest</em>}
                   </span>
-                  {canEditParticipants && (
+                  {isManager && canEditRoster && (
                     <button
                       type="button"
                       className="btn btn-ghost"
@@ -154,70 +226,51 @@ export default function TournamentDetailPage() {
               ))}
             </ul>
           )}
-
-          {canStart && (
-            <button type="button" className="btn btn-primary" onClick={handleStart}>
-              Start turnering (generer kamper)
-            </button>
-          )}
-
-          {!isRoundRobin && canEditParticipants && (
-            <p className="muted">
-              Start er deaktivert for dette formatet i MVP. Bytt til alle-mot-alle for full flyt.
-            </p>
-          )}
         </section>
 
-        {isRoundRobin && tournament.matches.length > 0 && (
-          <>
-            <section className="panel">
-              <h2>Tabell</h2>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Lag</th>
-                      <th>K</th>
-                      <th>S</th>
-                      <th>U</th>
-                      <th>T</th>
-                      <th>+/−</th>
-                      <th>P</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {standings.map((row, index) => (
-                      <tr key={row.participantId}>
-                        <td>{index + 1}</td>
-                        <td>{row.name}</td>
-                        <td>{row.played}</td>
-                        <td>{row.won}</td>
-                        <td>{row.drawn}</td>
-                        <td>{row.lost}</td>
-                        <td>
-                          {row.goalsFor - row.goalsAgainst > 0 ? '+' : ''}
-                          {row.goalsFor - row.goalsAgainst}
-                        </td>
-                        <td>
-                          <strong>{row.points}</strong>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+        {series && tournament.matches.length > 0 && (
+          <section className={`panel ${tournament.type === TOURNAMENT_TYPES.LEAGUE ? 'panel-highlight' : ''}`}>
+            <h2>{tournament.type === TOURNAMENT_TYPES.LEAGUE ? 'Tabell (hovedvisning)' : 'Tabell'}</h2>
+            <StandingsTable standings={standings} />
+          </section>
+        )}
 
-            <section className="panel panel-wide">
-              <h2>Kamper</h2>
-              {matchesByRound.map(([round, matches]) => (
+        {isCup && tournament.matches.length > 0 && (
+          <section className="panel panel-wide">
+            <h2>Bracket</h2>
+            <CupBracket matches={tournament.matches} participantById={participantById} />
+          </section>
+        )}
+
+        {tournament.matches.length > 0 && (
+          <section className="panel panel-wide">
+            <h2>Kamper & resultater</h2>
+            {!isManager && (
+              <p className="muted">Kun arrangør/eier kan registrere resultater i denne MVP-en.</p>
+            )}
+            {matchesByRound.map(([round, matches]) => {
+              const label = matches[0]?.roundName ?? `Runde ${round}`
+              const visible = matches.filter((m) => playableMatches.some((p) => p.id === m.id) || m.isBye)
+              if (!visible.length) return null
+              return (
                 <div key={round} className="round-block">
-                  <h3>Runde {round}</h3>
+                  <h3>{label}</h3>
                   <ul className="match-list">
-                    {matches.map((match) => {
-                      const home = participantById[match.homeParticipantId]?.name ?? '?'
-                      const away = participantById[match.awayParticipantId]?.name ?? '?'
+                    {visible.map((match) => {
+                      if (match.isBye) {
+                        const winner =
+                          participantById[match.homeParticipantId || match.awayParticipantId]
+                            ?.name ?? '?'
+                        return (
+                          <li key={match.id} className="match-row is-done">
+                            <span className="match-teams">{winner} — bye</span>
+                          </li>
+                        )
+                      }
+
+                      const home = participantById[match.homeParticipantId]?.name ?? 'TBD'
+                      const away = participantById[match.awayParticipantId]?.name ?? 'TBD'
+                      const ready = match.homeParticipantId && match.awayParticipantId
                       const draft = scoreDrafts[match.id] ?? {
                         home: match.homeScore ?? '',
                         away: match.awayScore ?? '',
@@ -229,50 +282,56 @@ export default function TournamentDetailPage() {
                           <span className="match-teams">
                             {home} <em>vs</em> {away}
                           </span>
-                          <div className="match-score">
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={draft.home}
-                              onChange={(e) =>
-                                setScoreDrafts((prev) => ({
-                                  ...prev,
-                                  [match.id]: { ...draft, home: e.target.value },
-                                }))
-                              }
-                              aria-label={`Poeng ${home}`}
-                            />
-                            <span>—</span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={draft.away}
-                              onChange={(e) =>
-                                setScoreDrafts((prev) => ({
-                                  ...prev,
-                                  [match.id]: { ...draft, away: e.target.value },
-                                }))
-                              }
-                              aria-label={`Poeng ${away}`}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => handleSaveScore(match)}
-                            >
-                              {done ? 'Oppdater' : 'Lagre'}
-                            </button>
-                          </div>
+                          {isManager && ready ? (
+                            <div className="match-score">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={draft.home}
+                                onChange={(e) =>
+                                  setScoreDrafts((prev) => ({
+                                    ...prev,
+                                    [match.id]: { ...draft, home: e.target.value },
+                                  }))
+                                }
+                                aria-label={`Poeng ${home}`}
+                              />
+                              <span>—</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={draft.away}
+                                onChange={(e) =>
+                                  setScoreDrafts((prev) => ({
+                                    ...prev,
+                                    [match.id]: { ...draft, away: e.target.value },
+                                  }))
+                                }
+                                aria-label={`Poeng ${away}`}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => handleSaveScore(match)}
+                              >
+                                {done ? 'Oppdater' : 'Lagre'}
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="muted">
+                              {done ? `${match.homeScore} — ${match.awayScore}` : ready ? 'Venter' : 'TBD'}
+                            </span>
+                          )}
                         </li>
                       )
                     })}
                   </ul>
                 </div>
-              ))}
-            </section>
-          </>
+              )
+            })}
+          </section>
         )}
       </div>
     </section>
