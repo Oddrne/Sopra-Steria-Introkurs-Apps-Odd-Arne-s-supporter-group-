@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext.jsx'
 import StatusBadge, { TypeBadge } from '../components/StatusBadge.jsx'
 import StandingsTable from '../components/StandingsTable.jsx'
 import TournamentTree from '../components/TournamentTree.jsx'
+import SwissBoard from '../components/SwissBoard.jsx'
 import WinnerTrophy from '../components/WinnerTrophy.jsx'
 import ResultsExportCard from '../components/ResultsExportCard.jsx'
 import {
@@ -367,8 +368,12 @@ export default function TournamentDetailPage() {
 
         {tournament.matches.length > 0 && (
           <section className="panel panel-wide">
-            <h2>Kampetre</h2>
-            <TournamentTree tournament={tournament} participantById={participantById} />
+            <h2>{isSwiss ? 'Swiss-tavle' : 'Kampetre'}</h2>
+            {isSwiss ? (
+              <SwissBoard tournament={tournament} participantById={participantById} />
+            ) : (
+              <TournamentTree tournament={tournament} participantById={participantById} />
+            )}
           </section>
         )}
 

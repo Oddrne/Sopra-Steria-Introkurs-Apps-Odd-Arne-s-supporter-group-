@@ -1134,9 +1134,177 @@ th {
   font-variant-numeric: tabular-nums;
 }
 
-.tree-hint {
+.swiss-board {
+  display: grid;
+  gap: 1rem;
+}
+
+.swiss-board-intro p {
   margin: 0;
-  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.swiss-round-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.swiss-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.swiss-tab.is-active {
+  border-color: rgba(200, 245, 66, 0.55);
+  color: var(--accent);
+  background: rgba(200, 245, 66, 0.1);
+}
+
+.swiss-round-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.swiss-panel-title {
+  margin: 0.5rem 0 0;
+  font-size: 1.35rem;
+}
+
+.swiss-panel-hint {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.swiss-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.swiss-group {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.swiss-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: rgba(200, 245, 66, 0.08);
+  border-bottom: 1px solid var(--line);
+}
+
+.swiss-group-label {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.swiss-group-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.swiss-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.7rem 0.7rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.swiss-pairings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.swiss-pairing {
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.swiss-pairing.is-done {
+  border-color: rgba(200, 245, 66, 0.28);
+}
+
+.swiss-pairing.is-bye {
+  opacity: 0.85;
+}
+
+.swiss-pairing-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.swiss-pairing-teams em {
+  color: var(--muted);
+  font-style: normal;
+  margin: 0 0.35rem;
+}
+
+.swiss-pairing-score {
+  margin-left: 0.65rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.swiss-pairing-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.swiss-pairing-tag.kind-seed {
+  color: #7ec8ff;
+  border-color: rgba(126, 200, 255, 0.45);
+}
+
+.swiss-pairing-tag.kind-same {
+  color: var(--accent);
+  border-color: rgba(200, 245, 66, 0.45);
+}
+
+.swiss-pairing-tag.kind-adjacent {
+  color: var(--warn);
+  border-color: rgba(255, 180, 84, 0.45);
+}
+
+.swiss-pairing-tag.kind-rematch {
+  color: var(--danger);
+  border-color: rgba(255, 107, 107, 0.45);
+}
+
+.swiss-pairing-tag.kind-bye {
+  color: var(--muted);
+}
+
+.swiss-pairing-detail {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
 }
 
 .callout-win {
