@@ -1,18 +1,42 @@
-import { forwardRef } from 'react'
+import { forwardRef, useMemo } from 'react'
 import StandingsTable from './StandingsTable.jsx'
 import WinnerTrophy from './WinnerTrophy.jsx'
 import { TypeBadge } from './StatusBadge.jsx'
-import { TOURNAMENT_TYPE_LABELS, normalizeTournamentType } from '../domain/constants.js'
+import {
+  MATCH_STATUSES,
+  TOURNAMENT_TYPE_LABELS,
+  normalizeTournamentType,
+} from '../domain/constants.js'
 
 /**
- * Dedikert kort for PNG-eksport av resultat.
+ * Dedikert kort for PNG-eksport av resultat (vinner + tabell + runderesultater).
  */
 const ResultsExportCard = forwardRef(function ResultsExportCard(
-  { tournament, winner, standings },
+  { tournament, winner, standings, participantById = {} },
   ref,
 ) {
   const type = normalizeTournamentType(tournament.type)
   const completed = tournament.matches.filter((m) => m.status === 'completed' && !m.isBye).length
+
+  const rounds = useMemo(() => {
+    const map = new Map()
+    for (const match of tournament.matches) {
+      if (!map.has(match.round)) map.set(match.round, [])
+      map.get(match.round).push(match)
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([round, matches]) => ({
+        round,
+        label: matches[0]?.roundName ?? `Runde ${round}`,
+        matches: [...matches].sort((a, b) => a.number - b.number),
+      }))
+  }, [tournament.matches])
+
+  function nameOf(id, fallback = 'TBD') {
+    if (!id) return fallback
+    return participantById[id]?.name ?? fallback
+  }
 
   return (
     <div ref={ref} className="export-card">
@@ -49,11 +73,55 @@ const ResultsExportCard = forwardRef(function ResultsExportCard(
         </div>
       )}
 
-      {!standings.length && winner && (
-        <p className="export-cup-note">Cup-vinner kåret via knockout-finale.</p>
+      {rounds.length > 0 && (
+        <div className="export-rounds">
+          <h3>Resultater per runde</h3>
+          {rounds.map(({ round, label, matches }) => (
+            <div key={round} className="export-round-block">
+              <h4>{label}</h4>
+              <ul className="export-match-list">
+                {matches.map((match) => {
+                  if (match.isBye) {
+                    return (
+                      <li key={match.id} className="export-match-row is-bye">
+                        <span>{nameOf(match.homeParticipantId || match.awayParticipantId)} — bye</span>
+                        <strong>W</strong>
+                      </li>
+                    )
+                  }
+
+                  const home = nameOf(match.homeParticipantId)
+                  const away = nameOf(match.awayParticipantId)
+                  const done = match.status === MATCH_STATUSES.COMPLETED
+                  const pending = !match.homeParticipantId || !match.awayParticipantId
+
+                  return (
+                    <li
+                      key={match.id}
+                      className={`export-match-row ${done ? 'is-done' : ''}`}
+                    >
+                      <span className="export-match-teams">
+                        {home} <em>vs</em> {away}
+                      </span>
+                      <strong className="export-match-score">
+                        {done
+                          ? `${match.homeScore} — ${match.awayScore}`
+                          : pending
+                            ? 'TBD'
+                            : 'Venter'}
+                      </strong>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       )}
 
-      <footer className="export-footer">kjell-games-turnering · {new Date().toLocaleDateString('nb-NO')}</footer>
+      <footer className="export-footer">
+        kjell-games-turnering · {new Date().toLocaleDateString('nb-NO')}
+      </footer>
     </div>
   )
 })

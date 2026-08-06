@@ -540,8 +540,66 @@ code {
   margin-top: 1rem;
 }
 
-.export-standings h3 {
+.export-standings h3,
+.export-rounds h3 {
   margin-bottom: 0.5rem;
+}
+
+.export-rounds {
+  margin-top: 1.25rem;
+}
+
+.export-round-block {
+  margin-top: 0.75rem;
+}
+
+.export-round-block h4 {
+  margin: 0 0 0.4rem;
+  color: #8fb0b8;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.export-match-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.export-match-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(232, 244, 242, 0.1);
+  font-size: 0.92rem;
+}
+
+.export-match-row.is-done {
+  border-color: rgba(200, 245, 66, 0.28);
+}
+
+.export-match-row.is-bye {
+  color: #8fb0b8;
+}
+
+.export-match-teams em {
+  color: #8fb0b8;
+  font-style: normal;
+  margin: 0 0.3rem;
+}
+
+.export-match-score {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #c8f542;
 }
 
 .export-cup-note {

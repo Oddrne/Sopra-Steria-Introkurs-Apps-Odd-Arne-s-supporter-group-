@@ -224,6 +224,7 @@ export default function TournamentDetailPage() {
             tournament={tournament}
             winner={winner}
             standings={standings}
+            participantById={participantById}
           />
         </div>
       )}
