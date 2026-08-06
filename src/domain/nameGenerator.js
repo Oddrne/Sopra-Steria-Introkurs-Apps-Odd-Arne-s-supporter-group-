@@ -61,6 +61,36 @@ const PACKS = {
     swiss: ['Swiss', 'Swiss Weekend', 'Swiss Clash', 'Swiss Round'],
     roundRobinLabel: 'Round-robin',
   },
+  fr: {
+    adjectives: [
+      'Épique',
+      'Dorée',
+      'Sauvage',
+      'Légendaire',
+      'Rapide',
+      'Solide',
+      'Fière',
+      'Brûlante',
+      'Cosmique',
+      'Ultime',
+    ],
+    themes: [
+      'Vendredi',
+      'Samedi',
+      'Bureau',
+      'Café',
+      'Soirée',
+      'Week-end',
+      'Déjeuner',
+      'Nuit',
+      'Été',
+      'Hiver',
+    ],
+    cup: ['Coupe', 'Finale', 'Knockout', 'Trophée', 'Duel'],
+    series: ['Série', 'Tour', 'Tournoi', 'Clash', 'Showdown'],
+    swiss: ['Swiss', 'Week-end Swiss', 'Duel Swiss', 'Tour Swiss'],
+    roundRobinLabel: 'Toutes-rondes',
+  },
 }
 
 function pick(list) {

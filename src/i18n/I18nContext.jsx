@@ -3,16 +3,19 @@ import { LOCALES, messages } from './messages.js'
 
 const STORAGE_KEY = 'kjell-games-locale'
 const I18nContext = createContext(null)
+const SUPPORTED = new Set(Object.values(LOCALES))
 
 function getInitialLocale() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === LOCALES.nb || stored === LOCALES.en) return stored
+    if (SUPPORTED.has(stored)) return stored
   } catch {
     /* ignore */
   }
-  const nav = typeof navigator !== 'undefined' ? navigator.language : 'nb'
-  return nav.toLowerCase().startsWith('en') ? LOCALES.en : LOCALES.nb
+  const nav = (typeof navigator !== 'undefined' ? navigator.language : 'nb').toLowerCase()
+  if (nav.startsWith('fr')) return LOCALES.fr
+  if (nav.startsWith('en')) return LOCALES.en
+  return LOCALES.nb
 }
 
 function interpolate(template, vars) {
@@ -22,11 +25,17 @@ function interpolate(template, vars) {
   )
 }
 
+function htmlLang(locale) {
+  if (locale === LOCALES.en) return 'en'
+  if (locale === LOCALES.fr) return 'fr'
+  return 'nb'
+}
+
 export function I18nProvider({ children }) {
   const [locale, setLocaleState] = useState(getInitialLocale)
 
   useEffect(() => {
-    document.documentElement.lang = locale === LOCALES.en ? 'en' : 'nb'
+    document.documentElement.lang = htmlLang(locale)
     try {
       localStorage.setItem(STORAGE_KEY, locale)
     } catch {
@@ -35,7 +44,7 @@ export function I18nProvider({ children }) {
   }, [locale])
 
   const setLocale = useCallback((next) => {
-    if (next === LOCALES.nb || next === LOCALES.en) setLocaleState(next)
+    if (SUPPORTED.has(next)) setLocaleState(next)
   }, [])
 
   const t = useCallback(
