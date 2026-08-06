@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useApp } from '../context/AppContext.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 
 export default function Layout() {
   const { currentUser, logout } = useApp()
@@ -36,7 +37,10 @@ export default function Layout() {
       </main>
 
       <footer className="footer">
-        Kjell Games MVP — alle-mot-alle, cup og Swiss. Data lagres lokalt i nettleseren.
+        <p className="footer-copy">
+          Kjell Games MVP alle-mot-alle, cup og Swiss.
+        </p>
+        <ThemeToggle />
       </footer>
     </div>
   )
