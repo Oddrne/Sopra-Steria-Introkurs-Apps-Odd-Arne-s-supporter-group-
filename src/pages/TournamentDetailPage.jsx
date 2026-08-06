@@ -33,6 +33,7 @@ export default function TournamentDetailPage() {
     generateMatches,
     generateNextRound,
     setMatchResult,
+    setMatchResults,
     canManageTournament,
   } = useApp()
 
@@ -85,6 +86,9 @@ export default function TournamentDetailPage() {
   const swissTotal =
     tournament.swissRounds ?? defaultSwissRoundCount(tournament.participants.length)
   const canNextSwiss = isManager && canGenerateNextSwissRound(tournament)
+  const playableMatches = tournament.matches.filter(
+    (m) => !m.isBye && m.homeParticipantId && m.awayParticipantId,
+  )
 
   function flash(text) {
     setMessage(text)
@@ -136,9 +140,25 @@ export default function TournamentDetailPage() {
     flash(result.ok ? 'Resultat lagret.' : result.error)
   }
 
-  const playableMatches = tournament.matches.filter(
-    (m) => !m.isBye && m.homeParticipantId && m.awayParticipantId,
-  )
+  function handleSaveAllScores() {
+    const results = playableMatches
+      .map((match) => {
+        const draft = scoreDrafts[match.id]
+        const home = draft?.home ?? match.homeScore
+        const away = draft?.away ?? match.awayScore
+        if (home === '' || home == null || away === '' || away == null) return null
+        return { matchId: match.id, homeScore: home, awayScore: away }
+      })
+      .filter(Boolean)
+
+    if (!results.length) {
+      flash('Fyll inn poeng på minst én kamp før du lagrer.')
+      return
+    }
+
+    const result = setMatchResults(tournament.id, results)
+    flash(result.ok ? `${result.saved} resultat(er) lagret.` : result.error)
+  }
 
   return (
     <section className="page">
@@ -318,7 +338,14 @@ export default function TournamentDetailPage() {
 
         {tournament.matches.length > 0 && (
           <section className="panel panel-wide">
-            <h2>Kamper & resultater</h2>
+            <div className="section-header">
+              <h2>Kamper & resultater</h2>
+              {isManager && playableMatches.length > 0 && (
+                <button type="button" className="btn btn-primary" onClick={handleSaveAllScores}>
+                  Lagre alle
+                </button>
+              )}
+            </div>
             {!isManager && (
               <p className="muted">Kun arrangør/eier kan registrere resultater i denne MVP-en.</p>
             )}

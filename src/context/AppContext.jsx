@@ -347,19 +347,24 @@ export function AppProvider({ children }) {
     return { ok: true }
   }, [state.tournaments])
 
-  const setMatchResult = useCallback((tournamentId, matchId, homeScore, awayScore) => {
-    const hs = Number(homeScore)
-    const as = Number(awayScore)
-    if (!Number.isInteger(hs) || !Number.isInteger(as) || hs < 0 || as < 0) {
-      return { ok: false, error: 'Poeng må være hele tall ≥ 0' }
-    }
-
+  const setMatchResults = useCallback((tournamentId, results) => {
     const tournament = state.tournaments.find((t) => t.id === tournamentId)
     if (!tournament) return { ok: false, error: 'Turnering ikke funnet' }
-    const match = tournament.matches.find((m) => m.id === matchId)
-    if (!match) return { ok: false, error: 'Kamp ikke funnet' }
-    if (tournament.type === TOURNAMENT_TYPES.CUP && hs === as) {
-      return { ok: false, error: 'Cup krever en vinner — uavgjort er ikke tillatt' }
+    if (!results.length) return { ok: false, error: 'Ingen resultater å lagre' }
+
+    const parsed = []
+    for (const { matchId, homeScore, awayScore } of results) {
+      const hs = Number(homeScore)
+      const as = Number(awayScore)
+      if (!Number.isInteger(hs) || !Number.isInteger(as) || hs < 0 || as < 0) {
+        return { ok: false, error: 'Poeng må være hele tall ≥ 0 for alle kamper' }
+      }
+      const match = tournament.matches.find((m) => m.id === matchId)
+      if (!match) return { ok: false, error: 'Kamp ikke funnet' }
+      if (tournament.type === TOURNAMENT_TYPES.CUP && hs === as) {
+        return { ok: false, error: 'Cup krever en vinner — uavgjort er ikke tillatt' }
+      }
+      parsed.push({ matchId, homeScore: hs, awayScore: as })
     }
 
     setState((s) => ({
@@ -367,21 +372,27 @@ export function AppProvider({ children }) {
       tournaments: s.tournaments.map((t) => {
         if (t.id !== tournamentId) return t
 
-        let matches = t.matches.map((m) =>
-          m.id === matchId
-            ? {
-                ...m,
-                homeScore: hs,
-                awayScore: as,
-                status: MATCH_STATUSES.COMPLETED,
-                isBye: false,
-              }
-            : m,
-        )
+        const byId = Object.fromEntries(parsed.map((r) => [r.matchId, r]))
+        let matches = t.matches.map((m) => {
+          const result = byId[m.id]
+          if (!result) return m
+          return {
+            ...m,
+            homeScore: result.homeScore,
+            awayScore: result.awayScore,
+            status: MATCH_STATUSES.COMPLETED,
+            isBye: false,
+          }
+        })
 
         if (t.type === TOURNAMENT_TYPES.CUP) {
-          const updated = matches.find((m) => m.id === matchId)
-          matches = advanceWinner(matches, updated)
+          const completed = [...matches]
+            .filter((m) => byId[m.id] || m.status === MATCH_STATUSES.COMPLETED)
+            .sort((a, b) => a.round - b.round || a.number - b.number)
+          for (const match of completed) {
+            const current = matches.find((m) => m.id === match.id)
+            if (current) matches = advanceWinner(matches, current)
+          }
         }
 
         const updatedTournament = { ...t, matches }
@@ -399,8 +410,15 @@ export function AppProvider({ children }) {
         return { ...t, matches, status }
       }),
     }))
-    return { ok: true }
+    return { ok: true, saved: parsed.length }
   }, [state.tournaments])
+
+  // Keep setMatchResult stable with setMatchResults available
+  const setMatchResultWrapped = useCallback(
+    (tournamentId, matchId, homeScore, awayScore) =>
+      setMatchResults(tournamentId, [{ matchId, homeScore, awayScore }]),
+    [setMatchResults],
+  )
 
   const value = {
     users: state.users,
@@ -419,7 +437,8 @@ export function AppProvider({ children }) {
     reopenRegistration,
     generateMatches,
     generateNextRound,
-    setMatchResult,
+    setMatchResult: setMatchResultWrapped,
+    setMatchResults,
     canManageTournament: (tournament) => canManageTournament(tournament, currentUser),
   }
 

@@ -313,6 +313,19 @@ code {
   flex-wrap: wrap;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.section-header h2 {
+  margin-bottom: 0;
+}
+
 .page.narrow {
   max-width: 640px;
 }
